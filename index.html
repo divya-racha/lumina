@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ScienceAtlas — Interactive 3D Science Explorer</title>
+<meta name="description" content="Explore human anatomy, the animal cell, and molecules in interactive 3D. Drag to orbit, explode the view, click any part to learn it.">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="loader">
+  <div class="spin"></div>
+  <p>Preparing the atlas&hellip;</p>
+</div>
+
+<div id="scene"></div>
+
+<header id="topbar">
+  <div class="brand">
+    <span class="logo">&#x1F52C;</span>
+    <div>
+      <h1>ScienceAtlas</h1>
+      <p>Interactive 3D science explorer</p>
+    </div>
+  </div>
+  <nav id="tabs">
+    <button class="tab active" data-atlas="anatomy">&#x1F9B4; Anatomy</button>
+    <button class="tab" data-atlas="cell">&#x1F9E0; Cell</button>
+    <button class="tab" data-atlas="molecules">&#x269B;&#xFE0F; Molecules</button>
+  </nav>
+</header>
+
+<button id="panel-toggle" aria-label="Toggle systems panel">&#x2630;</button>
+
+<aside id="panel-left">
+  <div id="systems"></div>
+  <div id="atlas-meta"></div>
+</aside>
+
+<aside id="info-card">
+  <button id="info-close" aria-label="Close">&times;</button>
+  <div id="info-body"></div>
+</aside>
+
+<div id="hint">Drag to orbit &middot; Scroll / pinch to zoom &middot; Click any part to inspect it</div>
+
+<div id="explode-bar">
+  <span class="lbl">Assembled</span>
+  <input type="range" id="explode" min="0" max="100" value="0" step="1">
+  <span class="lbl">Exploded</span>
+  <span id="explode-val">0%</span>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
