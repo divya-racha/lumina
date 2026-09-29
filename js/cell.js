@@ -416,6 +416,7 @@ export function buildCell() {
     group,
     parts,
     systems: SYSTEMS,
+    getContextId: () => 'main',
     camera: { pos: [5.4, 3.4, 6.4], target: [0, 0.2, 0] },
     explodeScale: 1.0
   };

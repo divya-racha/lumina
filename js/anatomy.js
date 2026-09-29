@@ -369,6 +369,7 @@ export function buildAnatomy() {
     parts,
     systems: SYSTEMS,
     shell: true,
+    getContextId: () => 'main',
     camera: { pos: [3.6, 2.7, 4.6], target: [0, 1.85, 0] },
     explodeScale: 1.0
   };

@@ -194,6 +194,7 @@ export function buildMolecules() {
     moleculeList: MOLECULES.map(m => ({ id: m.id, name: m.name, formula: m.formula })),
     setMolecule,
     getMoleculeInfo,
+    getContextId: () => current.id,
     applyExplode,
     camera: { pos: [4.0, 2.4, 4.8], target: [0, 0, 0] },
     explodeScale: 1.0
