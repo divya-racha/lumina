@@ -257,4 +257,142 @@ input[type="range"]::-moz-range-thumb {
   }
   #info-card.open { transform: translateY(0); }
   #hint { display: none; }
+  #top-actions { gap: 6px; }
+  #micro-bar { top: 76px; padding: 10px 14px; }
+  #learn-chip { bottom: 120px; right: 12px; }
+}
+
+/* ---------------- learn mode + MCAT ---------------- */
+#top-actions { display: flex; gap: 8px; }
+#tabs { overflow-x: auto; max-width: 44vw; scrollbar-width: none; }
+#tabs::-webkit-scrollbar { display: none; }
+
+/* animated term reveal: staggered letter pop, <600ms total */
+.anim-title .rl {
+  display: inline-block;
+  animation: letterPop 0.38s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+@keyframes letterPop {
+  from { transform: translateY(14px) scale(0.6); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.gotit-btn {
+  display: block; width: 100%; margin-top: 14px;
+  border: 1px solid rgba(46, 204, 113, 0.55); background: rgba(46, 204, 113, 0.14);
+  color: #7bed9f; font-size: 0.92rem; font-weight: 700;
+  padding: 11px; border-radius: 12px; cursor: pointer; transition: all 0.15s ease;
+}
+.gotit-btn:hover { background: rgba(46, 204, 113, 0.28); }
+
+/* quick-check chip */
+#learn-chip {
+  position: fixed; z-index: 40; right: 18px; bottom: 108px;
+  display: flex; align-items: stretch; gap: 0;
+  transform: translateY(20px) scale(0.9); opacity: 0; pointer-events: none;
+  transition: all 0.25s ease;
+}
+#learn-chip.show { transform: none; opacity: 1; pointer-events: auto; }
+#learn-chip-go {
+  display: flex; flex-direction: column; align-items: flex-start;
+  background: linear-gradient(135deg, #f2c14e, #e67e22); color: #231a05;
+  border: 0; border-radius: 16px 0 0 16px; padding: 12px 16px;
+  font-weight: 800; font-size: 0.95rem; cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+#learn-chip-go small { font-weight: 600; font-size: 0.72rem; opacity: 0.75; }
+#learn-chip-x {
+  border: 0; border-radius: 0 16px 16px 0; padding: 0 12px;
+  background: rgba(13, 20, 32, 0.92); color: var(--muted);
+  font-size: 1.1rem; cursor: pointer; border: 1px solid var(--line); border-left: 0;
+}
+
+/* micro-quiz bar (3D recall kinds) — mirrors #quiz-bar */
+#micro-bar {
+  position: fixed; z-index: 55; top: 84px; left: 50%; transform: translateX(-50%);
+  background: var(--panel); border: 1px solid rgba(242, 193, 78, 0.55);
+  border-radius: 16px; padding: 12px 22px; text-align: center;
+  backdrop-filter: blur(12px); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  max-width: calc(100vw - 32px);
+}
+#micro-bar[hidden] { display: none; }
+#micro-bar .qq { font-size: 1.05rem; font-weight: 700; }
+#micro-bar .qq b { color: var(--accent2); }
+#micro-bar .qmeta { font-size: 0.78rem; color: var(--muted); margin-top: 6px; }
+.skip-btn {
+  border: 1px solid var(--line); background: transparent; color: var(--muted);
+  border-radius: 999px; padding: 6px 16px; font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; transition: all 0.15s ease;
+}
+.skip-btn:hover { color: var(--text); border-color: var(--muted); }
+
+/* micro-quiz modal (3-choice kind) */
+#micro-modal {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(4, 7, 12, 0.6); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+#micro-modal[hidden] { display: none; }
+#micro-modal-card {
+  background: var(--panel); border: 1px solid rgba(242, 193, 78, 0.4); border-radius: 20px;
+  padding: 28px 30px; max-width: 440px; width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6); text-align: center;
+}
+#micro-modal-card .qq { font-size: 1.02rem; font-weight: 700; margin-bottom: 18px; line-height: 1.45; }
+.mchoices { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.mchoice {
+  border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04); color: var(--text);
+  border-radius: 12px; padding: 12px 16px; font-size: 0.95rem; font-weight: 600;
+  cursor: pointer; transition: all 0.15s ease;
+}
+.mchoice:hover:not(:disabled) { border-color: var(--accent); background: rgba(93, 173, 226, 0.12); }
+.mchoice:disabled { cursor: default; opacity: 0.85; }
+.mchoice.right { border-color: #2ecc71; background: rgba(46, 204, 113, 0.18); }
+.mchoice.wrong { border-color: #e74c3c; background: rgba(231, 76, 60, 0.15); }
+.mfeedback { margin-top: 14px; font-size: 0.95rem; line-height: 1.5; min-height: 1.5em; }
+.mfeedback b { color: var(--accent2); }
+
+/* MCAT menu — mirrors #quiz-end */
+#mcat-menu {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(4, 7, 12, 0.72); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+#mcat-menu[hidden] { display: none; }
+#mcat-menu-card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 20px;
+  padding: 32px 36px; max-width: 440px; width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6); text-align: center;
+}
+#mcat-menu-card h2 { font-size: 1.5rem; margin-bottom: 6px; }
+#mcat-menu-card .msub { color: var(--muted); font-size: 0.9rem; margin-bottom: 20px; }
+.mpack {
+  display: block; width: 100%; text-align: left;
+  border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03);
+  border-radius: 14px; padding: 16px 18px; margin-bottom: 12px;
+  cursor: pointer; transition: all 0.15s ease; color: var(--text);
+}
+.mpack:hover { border-color: var(--accent2); background: rgba(242, 193, 78, 0.08); }
+.mpack strong { display: block; font-size: 1.05rem; }
+.mpack span { display: block; color: var(--muted); font-size: 0.82rem; margin: 4px 0; line-height: 1.4; }
+.mpack em { font-style: normal; color: var(--accent2); font-size: 0.78rem; font-weight: 700; }
+#mcat-menu-card .skip-btn { margin-top: 6px; }
+
+/* confetti burst */
+#confetti { position: fixed; inset: 0; z-index: 70; pointer-events: none; overflow: hidden; }
+#confetti span {
+  position: absolute; left: 50%; top: 55%; width: 9px; height: 13px; border-radius: 2px;
+  opacity: 0;
+}
+#confetti.go span { animation: confettiFly 1.05s ease-out forwards; }
+@keyframes confettiFly {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+  100% { opacity: 0; transform: translate(var(--tx), var(--ty)) rotate(var(--rot)); }
+}
+
+/* mastery indicators */
+.sr-check { color: #2ecc71; font-weight: 800; }
+.mastered { color: #7bed9f; font-weight: 700; white-space: nowrap; }
+.panel-subheading {
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--accent2); margin: 10px 2px 4px; font-weight: 700;
 }
