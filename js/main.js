@@ -7,6 +7,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { buildAnatomy } from './anatomy.js';
 import { buildCell } from './cell.js';
 import { buildMolecules } from './molecules.js';
+import { sampleQuestions, isCorrectAnswer, findTargetPart, questionPrompt,
+         questionTargetLabel, quizTier, buildSearchEntries, searchEntries } from './quiz.js';
 
 /* ------------------------------------------------------------ renderer */
 const canvasWrap = document.getElementById('scene');
@@ -66,6 +68,22 @@ const pointer = new THREE.Vector2();
 
 const $ = id => document.getElementById(id);
 const systemsEl = $('systems'), infoCard = $('info-card'), infoBody = $('info-body');
+const quizBar = $('quiz-bar'), quizEnd = $('quiz-end'), quizBtn = $('quiz-btn');
+const searchInput = $('search-input'), searchResults = $('search-results');
+
+/* camera fly-to + pulse highlight (search) */
+const clock = new THREE.Clock();
+const easeInOut = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+let camAnim = null;
+let pulsePart = null, pulseUntil = 0;
+
+/* quiz mode state */
+const quiz = { active: false, questions: [], total: 0, idx: 0, score: 0, locked: false, timer: null };
+let searchIdx = [];
+
+function atlasCtx() {
+  return { id: atlas.id, molecule: atlas.id === 'molecules' ? atlas.getMoleculeInfo() : null };
+}
 
 /* ---------------------------------------------------------- atlas switch */
 function disposeAtlas() {
@@ -84,12 +102,16 @@ function tagParts() {
 }
 
 function loadAtlas(id) {
+  endQuiz(false);
   disposeAtlas();
   clearSelection();
   atlas = BUILDERS[id]();
   scene.add(atlas.group);
   parts = atlas.id === 'molecules' ? atlas.getParts() : atlas.parts;
   tagParts();
+  buildSearchIdx();
+  searchInput.value = '';
+  searchResults.classList.remove('open');
   camera.position.set(...atlas.camera.pos);
   controls.target.set(...atlas.camera.target);
   controls.update();
@@ -104,8 +126,10 @@ function loadAtlas(id) {
 }
 
 function refreshParts() { // after molecule switch
+  endQuiz(false);
   parts = atlas.getParts();
   tagParts();
+  buildSearchIdx();
   applyExplode();
   $('atlas-meta').textContent = `${parts.length} clickable parts`;
 }
@@ -176,6 +200,7 @@ renderer.domElement.addEventListener('pointerup', e => {
   const moved = Math.hypot(e.clientX - downX, e.clientY - downY);
   if (moved < 7 && performance.now() - downT < 600) {
     const part = pick(e.clientX, e.clientY);
+    if (quiz.active) { quizAnswer(part); return; } // never open info cards mid-quiz
     if (part) selectPart(part);
     else clearSelection();
   }
@@ -186,7 +211,7 @@ renderer.domElement.addEventListener('pointermove', e => {
   if (part !== hovered) {
     hovered = part;
     renderer.domElement.style.cursor = part ? 'pointer' : 'grab';
-    refreshHighlights();
+    if (!quiz.locked) refreshHighlights(); // don't clear answer flashes
   }
 });
 
@@ -209,11 +234,132 @@ function showInfo(info) {
     `<div class="tag">${escapeHtml(info.tag)}</div>` +
     `<h2>${escapeHtml(info.name)}</h2>` +
     info.desc.map(d => `<p>${escapeHtml(d)}</p>`).join('') +
-    (info.exam ? `<div class="exam"><span>\uD83D\uDD11 Exam point</span>${escapeHtml(info.exam)}</div>` : '');
+    (info.exam ? `<div class="exam"><span>\uD83D\uDD11 Exam point</span>${escapeHtml(info.exam)}</div>` : '') +
+    `<a class="tutor-link" href="https://gradpath-727nuzefxhbofh3rmobmk3.streamlit.app/" target="_blank" rel="noopener">\uD83D\uDCAC Ask the GradPath tutor about this</a>`;
   infoCard.classList.add('open');
 }
 function hideInfo() { infoCard.classList.remove('open'); }
 $('info-close').addEventListener('click', clearSelection);
+
+/* ------------------------------------------------------------ quiz mode */
+function startQuiz() {
+  if (!parts.length) return;
+  endQuiz(false);
+  clearSelection();
+  hideInfo();
+  camAnim = null; pulsePart = null;
+  controls.autoRotate = false;
+  quiz.active = true;
+  quiz.questions = sampleQuestions(parts, atlasCtx(), 10);
+  quiz.total = quiz.questions.length;
+  quiz.idx = 0; quiz.score = 0; quiz.locked = false;
+  quizBtn.classList.add('on');
+  quizBtn.innerHTML = '\u2715 Exit quiz';
+  renderQuizBar();
+  quizBar.hidden = false;
+}
+
+function renderQuizBar(feedback) {
+  const q = quiz.questions[quiz.idx];
+  quizBar.innerHTML =
+    `<div class="qq">${feedback || escapeHtml(questionPrompt(q, atlasCtx()))}</div>` +
+    `<div class="qmeta">Question ${quiz.idx + 1}/${quiz.total} &middot; Score ${quiz.score}</div>`;
+}
+
+function quizAnswer(part) {
+  if (!quiz.active || quiz.locked || !part) return; // empty-space clicks don't count
+  quiz.locked = true;
+  const q = quiz.questions[quiz.idx];
+  if (isCorrectAnswer(q, part)) {
+    quiz.score++;
+    setEmissive(part, 0x2ecc71);
+    renderQuizBar('\u2705 Correct!');
+  } else {
+    setEmissive(part, 0xe74c3c);
+    const target = findTargetPart(q, parts);
+    if (target && target !== part) setEmissive(target, 0x2ecc71);
+    renderQuizBar(`\u274C That was the <b>${escapeHtml(part.info.name)}</b> &mdash; find the <b>${escapeHtml(questionTargetLabel(q))}</b>`);
+  }
+  quiz.timer = setTimeout(() => {
+    quiz.locked = false;
+    quiz.idx++;
+    if (quiz.idx >= quiz.total) endQuiz(true);
+    else { refreshHighlights(); renderQuizBar(); }
+  }, 1200);
+}
+
+function endQuiz(showResults) {
+  if (quiz.timer) { clearTimeout(quiz.timer); quiz.timer = null; }
+  const wasActive = quiz.active;
+  const score = quiz.score, total = quiz.total;
+  quiz.active = false; quiz.locked = false;
+  quiz.questions = []; quiz.total = 0; quiz.score = 0; quiz.idx = 0;
+  quizBar.hidden = true;
+  quizBtn.classList.remove('on');
+  quizBtn.innerHTML = '\uD83C\uDFAF Quiz me';
+  if (wasActive) refreshHighlights();
+  if (showResults) showQuizEnd(score, total);
+  else quizEnd.hidden = true;
+}
+
+function showQuizEnd(score, total) {
+  const tier = quizTier(score, total);
+  $('quiz-end-body').innerHTML =
+    `<div class="qscore">${score}<span>/${total}</span></div>` +
+    `<h2>${tier.title}</h2><p>${tier.sub}</p>` +
+    `<div class="qbtns"><button id="quiz-retry">\u21BB Retry</button>` +
+    `<button id="quiz-exit">Exit quiz</button></div>`;
+  quizEnd.hidden = false;
+  $('quiz-retry').addEventListener('click', startQuiz);
+  $('quiz-exit').addEventListener('click', () => endQuiz(false));
+}
+quizBtn.addEventListener('click', () => quiz.active ? endQuiz(false) : startQuiz());
+
+/* ---------------------------------------------------------------- search */
+function buildSearchIdx() { searchIdx = buildSearchEntries(parts); }
+
+function renderSearchResults() {
+  if (quiz.active) { searchResults.classList.remove('open'); return; } // no hints mid-quiz
+  const hits = searchEntries(searchIdx, searchInput.value, 8);
+  if (!hits.length) { searchResults.innerHTML = ''; searchResults.classList.remove('open'); return; }
+  searchResults.innerHTML = hits.map((h, i) =>
+    `<button data-i="${i}"><span class="sr-name">${escapeHtml(h.name)}</span>` +
+    `<span class="sr-tag">${escapeHtml(h.tag)}</span></button>`).join('');
+  searchResults.classList.add('open');
+  searchResults.querySelectorAll('button').forEach(b =>
+    b.addEventListener('click', () => {
+      const h = hits[+b.dataset.i];
+      searchInput.value = '';
+      searchResults.innerHTML = '';
+      searchResults.classList.remove('open');
+      focusPart(h.part);
+    }));
+}
+searchInput.addEventListener('input', renderSearchResults);
+searchInput.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    searchInput.value = '';
+    searchResults.innerHTML = '';
+    searchResults.classList.remove('open');
+    searchInput.blur();
+  }
+});
+
+/* fly the camera to a part, pulse-highlight it, open its info card */
+function focusPart(part) {
+  const wp = new THREE.Vector3();
+  part.group.getWorldPosition(wp);
+  const off = camera.position.clone().sub(controls.target);
+  const dist = THREE.MathUtils.clamp(off.length(), 3.2, 6.5);
+  off.normalize();
+  camAnim = { t: 0, dur: 1.0,
+    fromT: controls.target.clone(), toT: wp.clone(),
+    fromP: camera.position.clone(), toP: wp.clone().addScaledVector(off, dist) };
+  pulsePart = part;
+  pulseUntil = performance.now() + 2400;
+  selectPart(part);
+  if (window.innerWidth <= 900) $('panel-left').classList.remove('open');
+}
 
 function showMoleculeInfo() {
   const m = atlas.getMoleculeInfo();
@@ -302,6 +448,22 @@ window.addEventListener('resize', () => {
 let firstFrame = true;
 function animate() {
   requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.1);
+  if (camAnim) {
+    camAnim.t += dt;
+    const k = easeInOut(Math.min(1, camAnim.t / camAnim.dur));
+    controls.target.lerpVectors(camAnim.fromT, camAnim.toT, k);
+    camera.position.lerpVectors(camAnim.fromP, camAnim.toP, k);
+    if (camAnim.t >= camAnim.dur) camAnim = null;
+  }
+  if (pulsePart) {
+    if (performance.now() > pulseUntil || quiz.locked) {
+      pulsePart = null;
+      refreshHighlights();
+    } else {
+      setEmissive(pulsePart, Math.floor(performance.now() / 300) % 2 ? 0x7a5c14 : null);
+    }
+  }
   controls.update();
   renderer.render(scene, camera);
   if (firstFrame) {

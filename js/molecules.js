@@ -121,6 +121,7 @@ export function buildMolecules() {
       const p = {
         id: 'atom-' + i,
         system: 'atom',
+        el: a.el, // element symbol — used by quiz matching + search
         info: {
           name: `${E.name} (${a.el})`,
           tag: `Element \u00b7 atomic number ${E.num} \u2014 in ${current.name}`,
