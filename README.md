@@ -1,5 +1,7 @@
 # ScienceAtlas
 
+**Mission:** a free-forever interactive 3D atlas for college students studying medicine and science — built to help them get great outcomes. No accounts, no paywalls, no limits: orbit, explode, and click to learn, then test yourself in quiz mode.
+
 An interactive 3D science explorer for students — orbit, explode, and click-to-inspect three atlases:
 
 1. **Human Anatomy** — a stylized procedural figure with 7 toggleable systems (skeletal, muscular, cardiovascular, nervous, digestive, respiratory, urinary), 25 clickable organs and structures, and an explode slider that separates the systems in 3D.
@@ -23,6 +25,9 @@ python3 -m http.server 8000
 - **Click any structure** to open its study card (click empty space to close)
 - **Explode slider** (bottom) separates the systems / organelles / atoms in 3D
 - **Left panel**: toggle body systems, organelle layers, or switch molecules
+- **🔍 Search** (top of left panel): type a part name, pick a result — the camera flies to it and its study card opens
+- **🎯 Quiz me** (top bar): 10-question rounds sampled from the current atlas — click the named part in 3D. Green = correct, red = wrong (the right answer flashes green). Score tiers from "Keep exploring 🔍" to "Exam ready 🏆"
+- **💬 Ask the GradPath tutor**: every study card links to the [GradPath AI tutor](https://gradpath-727nuzefxhbofh3rmobmk3.streamlit.app/) for deeper questions
 - Mobile: the left panel collapses behind the ☰ button; the study card becomes a bottom sheet
 
 ## Tech

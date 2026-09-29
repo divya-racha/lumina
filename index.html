@@ -29,7 +29,7 @@
     <span class="logo">&#x1F52C;</span>
     <div>
       <h1>ScienceAtlas</h1>
-      <p>Interactive 3D science explorer</p>
+      <p>A free interactive 3D atlas for science students &mdash; orbit, explode, click to learn.</p>
     </div>
   </div>
   <nav id="tabs">
@@ -37,11 +37,16 @@
     <button class="tab" data-atlas="cell">&#x1F9E0; Cell</button>
     <button class="tab" data-atlas="molecules">&#x269B;&#xFE0F; Molecules</button>
   </nav>
+  <button id="quiz-btn" class="quiz-btn">&#x1F3AF; Quiz me</button>
 </header>
 
 <button id="panel-toggle" aria-label="Toggle systems panel">&#x2630;</button>
 
 <aside id="panel-left">
+  <div id="search-wrap">
+    <input id="search-input" type="text" placeholder="Search parts&hellip;" autocomplete="off" aria-label="Search parts">
+    <div id="search-results"></div>
+  </div>
   <div id="systems"></div>
   <div id="atlas-meta"></div>
 </aside>
@@ -52,6 +57,14 @@
 </aside>
 
 <div id="hint">Drag to orbit &middot; Scroll / pinch to zoom &middot; Click any part to inspect it</div>
+
+<div id="quiz-bar" hidden></div>
+
+<div id="quiz-end" hidden>
+  <div id="quiz-end-card">
+    <div id="quiz-end-body"></div>
+  </div>
+</div>
 
 <div id="explode-bar">
   <span class="lbl">Assembled</span>
