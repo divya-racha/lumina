@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ScienceAtlas — Interactive 3D Science Explorer</title>
-<meta name="description" content="Explore human anatomy, the animal cell, and molecules in interactive 3D. Drag to orbit, explode the view, click any part to learn it.">
+<meta name="description" content="A free interactive 3D atlas for biology, biochemistry, organic chemistry, neuroscience, geology and MCAT prep. Explore, quiz yourself, master the material.">
 <link rel="stylesheet" href="css/style.css">
 <script type="importmap">
 {
@@ -29,15 +29,24 @@
     <span class="logo">&#x1F52C;</span>
     <div>
       <h1>ScienceAtlas</h1>
-      <p>A free interactive 3D atlas for science students &mdash; orbit, explode, click to learn.</p>
+      <p>A free interactive 3D atlas for biology, biochemistry, organic chemistry, neuroscience, geology &amp; MCAT prep.</p>
     </div>
   </div>
   <nav id="tabs">
     <button class="tab active" data-atlas="anatomy">&#x1F9B4; Anatomy</button>
-    <button class="tab" data-atlas="cell">&#x1F9E0; Cell</button>
+    <button class="tab" data-atlas="cell">&#x1F9A0; Animal Cell</button>
+    <button class="tab" data-atlas="plantcell">&#x1F331; Plant Cell</button>
+    <button class="tab" data-atlas="neuron">&#x1F9E0; Neuron Lab</button>
     <button class="tab" data-atlas="molecules">&#x269B;&#xFE0F; Molecules</button>
+    <button class="tab" data-atlas="ochem">&#x1F9EA; Ochem Studio</button>
+    <button class="tab" data-atlas="biochem">&#x1F9EC; Biochem</button>
+    <button class="tab" data-atlas="earth">&#x1F30D; Earth</button>
+    <button class="tab" data-atlas="ecology">&#x1F33F; Ecology</button>
   </nav>
-  <button id="quiz-btn" class="quiz-btn">&#x1F3AF; Quiz me</button>
+  <div id="top-actions">
+    <button id="mcat-btn" class="quiz-btn">&#x2695;&#xFE0F; MCAT Prep</button>
+    <button id="quiz-btn" class="quiz-btn">&#x1F3AF; Quiz me</button>
+  </div>
 </header>
 
 <button id="panel-toggle" aria-label="Toggle systems panel">&#x2630;</button>
@@ -59,6 +68,27 @@
 <div id="hint">Drag to orbit &middot; Scroll / pinch to zoom &middot; Click any part to inspect it</div>
 
 <div id="quiz-bar" hidden></div>
+
+<div id="micro-bar" hidden></div>
+
+<div id="micro-modal" hidden>
+  <div id="micro-modal-card">
+    <div id="micro-modal-body"></div>
+  </div>
+</div>
+
+<div id="mcat-menu" hidden>
+  <div id="mcat-menu-card">
+    <div id="mcat-menu-body"></div>
+  </div>
+</div>
+
+<div id="learn-chip">
+  <button id="learn-chip-go"><span>&#x26A1; Quick check</span><small>1 question</small></button>
+  <button id="learn-chip-x" aria-label="Dismiss">&times;</button>
+</div>
+
+<div id="confetti"></div>
 
 <div id="quiz-end" hidden>
   <div id="quiz-end-card">
