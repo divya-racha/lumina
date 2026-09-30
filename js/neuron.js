@@ -788,14 +788,14 @@ export function buildNeuron() {
     }
     // --- phase plaques: clickable, glow during their phase ---
     {
-      const p = makePart('depol', 'apphase', [-2.6, 3.4, 0], 1.2);
+      const p = makePart('depol', 'apphase', [-4.7, 1.0, 0], 1.2);
       const pl = makePlaque('Depolarization \u00B7 Na\u207a in', '#e67e22', 40);
       p.group.add(pl);
       apView.depolPlaque = pl;
       push(p);
     }
     {
-      const p = makePart('repol', 'apphase', [2.6, 3.4, 0], 1.2);
+      const p = makePart('repol', 'apphase', [4.7, 1.0, 0], 1.2);
       const pl = makePlaque('Repolarization \u00B7 K\u207a out', '#2ecc71', 40);
       p.group.add(pl);
       apView.repolPlaque = pl;
