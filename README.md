@@ -1,4 +1,4 @@
-# ScienceAtlas
+# Lumina
 
 **Mission:** a free-forever interactive 3D atlas for college students studying medicine and science — built for biology, biochemistry, organic chemistry, neuroscience, geology, and MCAT prep. No accounts, no paywalls, no limits.
 
