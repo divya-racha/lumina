@@ -1,7 +1,8 @@
 /* Lumina — Neuron Lab atlas.
- * Two views sharing one container: a stylized neuron lying along the x-axis
- * (with an enlarged synapse close-up at the terminals) and a stylized brain
- * with clickable regions. Descriptions grounded in OpenStax Biology 2e,
+ * Three views sharing one container: a stylized neuron lying along the x-axis
+ * (with an enlarged synapse close-up at the terminals), a stylized brain
+ * with clickable regions, and an animated action-potential diagram with a
+ * live voltage-vs-time graph. Descriptions grounded in OpenStax Biology 2e,
  * Chapters 33 and 35 (the nervous system, neurons and synapses, the brain).
  */
 import * as THREE from 'three';
@@ -160,23 +161,98 @@ const INFO = {
       'It is the body\u2019s thermostat and homeostat: it regulates hunger, thirst, body temperature, sleep, and the stress response.'
     ],
     exam: 'Hypothalamus = homeostasis headquarters: hunger, thirst, temperature, plus control of the pituitary.'
+  },
+  nachannel: {
+    name: 'Sodium Channel (Na\u207a)',
+    tag: 'Action potential',
+    desc: [
+      'Voltage-gated sodium channels are proteins spanning the axon membrane. At rest they are closed; when the membrane depolarizes past threshold (\u2248 \u221255 mV), they snap open.',
+      'Na\u207a then rushes INTO the axon down its electrochemical gradient, driving the rising phase of the action potential up to about +30 mV. They inactivate within a millisecond, which is why the spike is so brief.'
+    ],
+    exam: 'Depolarization = Na\u207a IN. Channels open at threshold (\u221255 mV) and inactivate fast.'
+  },
+  kchannel: {
+    name: 'Potassium Channel (K\u207a)',
+    tag: 'Action potential',
+    desc: [
+      'Voltage-gated potassium channels open more slowly, near the peak of the action potential.',
+      'K\u207a then flows OUT of the axon down its concentration gradient, bringing the membrane potential back down (repolarization) and briefly overshooting into hyperpolarization.'
+    ],
+    exam: 'Repolarization = K\u207a OUT. These channels are slower to open than Na\u207a channels \u2014 that delay shapes the falling phase.'
+  },
+  napump: {
+    name: 'Sodium-Potassium Pump',
+    tag: 'Action potential',
+    desc: [
+      'The Na\u207a/K\u207a-ATPase uses ATP to move 3 Na\u207a out of the axon and 2 K\u207a in, against their concentration gradients.',
+      'It does not create the action potential \u2014 it restores the ion gradients afterward, maintaining the \u221270 mV resting potential so the neuron can fire again.'
+    ],
+    exam: 'Pump = 3 Na\u207a OUT, 2 K\u207a IN, costs ATP. It maintains gradients; it does NOT cause the spike.'
+  },
+  depol: {
+    name: 'Depolarization',
+    tag: 'Action potential',
+    desc: [
+      'Depolarization is the rising phase of the action potential: the membrane potential shoots from the resting \u221270 mV, past threshold (\u221255 mV), up to about +30 mV.',
+      'It is caused by voltage-gated Na\u207a channels opening and Na\u207a flooding into the axon. Press Play and watch the orange ions stream in.'
+    ],
+    exam: 'Depolarization: \u221270 \u2192 +30 mV, caused by Na\u207a influx. "Depolarize" = the inside becomes less negative.'
+  },
+  repol: {
+    name: 'Repolarization',
+    tag: 'Action potential',
+    desc: [
+      'Repolarization is the falling phase: K\u207a channels open, K\u207a flows out of the axon, and the membrane potential drops back toward \u221270 mV, briefly overshooting into hyperpolarization.',
+      'The Na\u207a channels are inactivated by now, so no new spike can start until they reset \u2014 part of the refractory period.'
+    ],
+    exam: 'Repolarization: +30 mV \u2192 \u221270 mV (and below), caused by K\u207a efflux. The overshoot is hyperpolarization.'
   }
 };
 
 const SYSTEMS = [
   { id: 'neuron', label: 'Neuron', color: '#5dade2' },
   { id: 'synapse', label: 'Synapse', color: '#f5b041' },
-  { id: 'brain', label: 'Brain regions', color: '#af7ac5' }
+  { id: 'brain', label: 'Brain regions', color: '#af7ac5' },
+  { id: 'apchan', label: 'Ion channels', color: '#f39c12' },
+  { id: 'appump', label: 'Na\u207a/K\u207a pump', color: '#9b59b6' },
+  { id: 'apphase', label: 'Phase labels', color: '#2ecc71' }
 ];
 
 const VIEWS = [
   { id: 'cell', label: '\uD83D\uDD2C Neuron' },
-  { id: 'brain', label: '\uD83E\uDDE0 Brain regions' }
+  { id: 'brain', label: '\uD83E\uDDE0 Brain regions' },
+  { id: 'ap', label: '\u26A1 Action potential' }
 ];
 const CAMERAS = {
   cell: { pos: [6.2, 3.0, 7.8], target: [0.4, 0, 0] },
-  brain: { pos: [4.6, 3.2, 7.0], target: [0, -0.3, 0] }
+  brain: { pos: [4.6, 3.2, 7.0], target: [0, -0.3, 0] },
+  ap: { pos: [0, 3.6, 11.2], target: [0, 0.3, 0] }
 };
+
+/* --------------------------------- action potential timeline (OpenStax) */
+/* One full cycle in seconds. Exported pure so tests can verify the curve. */
+export const AP_CYCLE = 6.0;
+export const AP_PHASES = [
+  { id: 'rest',    label: 'Resting \u2014 \u221270 mV',            t0: 0.0, t1: 1.6, v0: -70, v1: -70 },
+  { id: 'depol',   label: 'Depolarization \u2014 Na\u207a rushes in', t0: 1.6, t1: 2.7, v0: -70, v1: 30 },
+  { id: 'repol',   label: 'Repolarization \u2014 K\u207a flows out',  t0: 2.7, t1: 3.8, v0: 30,  v1: -80 },
+  { id: 'hyper',   label: 'Hyperpolarization \u2014 brief dip',   t0: 3.8, t1: 4.6, v0: -80, v1: -70 },
+  { id: 'restore', label: 'Pump restores the gradients',        t0: 4.6, t1: 6.0, v0: -70, v1: -70 }
+];
+function smootherstep(x) {
+  x = Math.min(1, Math.max(0, x));
+  return x * x * x * (x * (x * 6 - 15) + 10);
+}
+function apWrap(t) { return ((t % AP_CYCLE) + AP_CYCLE) % AP_CYCLE; }
+export function apPhaseAt(t) {
+  const tt = apWrap(t);
+  return AP_PHASES.find(p => tt >= p.t0 && tt < p.t1) || AP_PHASES[0];
+}
+export function apVoltageAt(t) {
+  const p = apPhaseAt(t);
+  const k = smootherstep((apWrap(t) - p.t0) / (p.t1 - p.t0));
+  return p.v0 + (p.v1 - p.v0) * k;
+}
 
 /* --------------------------------------------------------------- helpers */
 function mat(color, opts = {}) {
@@ -223,6 +299,57 @@ function limb(a, b, r1, r2, color) {
   return m;
 }
 
+function roundRectPath(g, x, y, w, h, r) {
+  g.beginPath();
+  g.moveTo(x + r, y);
+  g.arcTo(x + w, y, x + w, y + h, r);
+  g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r);
+  g.arcTo(x, y, x + w, y, r);
+  g.closePath();
+}
+
+/* Floating text plaque (canvas texture). The group carries
+ * userData.setGlow(on) to highlight it during its animation phase. */
+function makePlaque(text, accent = '#5dade2', fs = 44) {
+  const padX = 34, padY = 24;
+  const meas = document.createElement('canvas').getContext('2d');
+  meas.font = `700 ${fs}px system-ui, -apple-system, sans-serif`;
+  const tw = Math.ceil(meas.measureText(text).width);
+  const c = document.createElement('canvas');
+  c.width = tw + padX * 2; c.height = fs + padY * 2;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(13,22,36,0.88)';
+  g.strokeStyle = accent; g.lineWidth = 5;
+  roundRectPath(g, 4, 4, c.width - 8, c.height - 8, 26);
+  g.fill(); g.stroke();
+  g.font = `700 ${fs}px system-ui, -apple-system, sans-serif`;
+  g.fillStyle = '#eaf2f8'; g.textBaseline = 'middle';
+  g.fillText(text, padX, c.height / 2 + 2);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const H = 0.62, W = H * (c.width / c.height);
+  const group = new THREE.Group();
+  const glow = new THREE.Mesh(
+    new THREE.PlaneGeometry(W + 0.2, H + 0.2),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color(accent), transparent: true,
+      opacity: 0, side: THREE.DoubleSide, depthWrite: false })
+  );
+  const face = new THREE.Mesh(
+    new THREE.PlaneGeometry(W, H),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide })
+  );
+  glow.position.z = -0.02;
+  group.add(glow); group.add(face);
+  group.userData.setGlow = on => { glow.material.opacity = on ? 0.55 : 0; };
+  return group;
+}
+/* Mark a mesh (or subtree) as decorative: raycast picking skips it. */
+function noPick(obj) {
+  obj.traverse(o => { o.userData.noPick = true; });
+  return obj;
+}
+
 /* ----------------------------------------------------------------- build */
 export function buildNeuron() {
   const group = new THREE.Group();
@@ -230,6 +357,160 @@ export function buildNeuron() {
   group.add(container);
   let parts = [];
   let view = 'cell';
+
+  /* ---------------- action potential view: animation + HUD state -------- */
+  const ap = { t: 0, playing: true, ions: [], spawnAcc: 0 };
+  let apView = null;           // per-view refs: { ionGroup, depolPlaque, repolPlaque }
+  let apOverlay = null, apCanvas = null, apCtx2d = null;
+  const apEls = {};
+  const NA_XS = [-3.4, -2.6, -1.8];
+  const K_XS = [1.8, 2.6, 3.4];
+
+  function ensureApOverlay() {
+    if (apOverlay) return;
+    apOverlay = document.createElement('div');
+    apOverlay.id = 'ap-panel';
+    apOverlay.innerHTML =
+      '<div class="ap-head">\u26A1 Action potential <span id="ap-phase">Resting</span></div>' +
+      '<canvas id="ap-graph" width="560" height="300"></canvas>' +
+      '<div class="ap-volt">Membrane potential: <b id="ap-vm">\u221270 mV</b></div>' +
+      '<div class="ap-controls"><button id="ap-play">\u23F8 Pause</button>' +
+      '<button id="ap-step">\u23ED Step</button>' +
+      '<button id="ap-reset">\u21BA Reset</button></div>' +
+      '<div class="ap-legend"><span><span class="sw" style="background:#ffa726"></span>Na\u207a in</span>' +
+      '<span><span class="sw" style="background:#4dd0e1"></span>K\u207a out</span>' +
+      '<span><span class="sw" style="background:#9b59b6"></span>pump</span></div>';
+    document.body.appendChild(apOverlay);
+    apCanvas = apOverlay.querySelector('#ap-graph');
+    apCtx2d = apCanvas.getContext('2d');
+    apEls.phase = apOverlay.querySelector('#ap-phase');
+    apEls.vm = apOverlay.querySelector('#ap-vm');
+    apEls.play = apOverlay.querySelector('#ap-play');
+    const setPlayLabel = () => { apEls.play.textContent = ap.playing ? '\u23F8 Pause' : '\u25B6 Play'; };
+    apEls.play.addEventListener('click', () => { ap.playing = !ap.playing; setPlayLabel(); });
+    apOverlay.querySelector('#ap-step').addEventListener('click', () => {
+      ap.playing = false; setPlayLabel();
+      const idx = AP_PHASES.indexOf(apPhaseAt(ap.t));
+      ap.t = AP_PHASES[(idx + 1) % AP_PHASES.length].t0 + 0.001;
+      clearApIons();
+    });
+    apOverlay.querySelector('#ap-reset').addEventListener('click', () => {
+      ap.t = 0; ap.playing = true; setPlayLabel();
+      clearApIons();
+    });
+    setPlayLabel();
+  }
+  function setApOverlayVisible(on) {
+    ensureApOverlay();
+    apOverlay.style.display = on ? 'block' : 'none';
+  }
+
+  function clearApIons() {
+    if (!apView) { ap.ions = []; return; }
+    ap.ions.forEach(io => {
+      apView.ionGroup.remove(io.mesh);
+      io.mesh.geometry.dispose(); io.mesh.material.dispose();
+    });
+    ap.ions = [];
+  }
+
+  function spawnApIon(kind, x, y0, y1) {
+    if (!apView || ap.ions.length > 60) return;
+    const mesh = ball(0.10, kind === 'na' ? 0xffa726 : 0x4dd0e1, 12, 10);
+    mesh.userData.noPick = true;
+    apView.ionGroup.add(mesh);
+    ap.ions.push({ mesh, x, z: (Math.random() - 0.5) * 1.6, y0, y1, t: 0, dur: 0.85 });
+  }
+
+  function stepApIons(dt) {
+    for (let i = ap.ions.length - 1; i >= 0; i--) {
+      const io = ap.ions[i];
+      io.t += dt / io.dur;
+      if (io.t >= 1) {
+        apView.ionGroup.remove(io.mesh);
+        io.mesh.geometry.dispose(); io.mesh.material.dispose();
+        ap.ions.splice(i, 1);
+        continue;
+      }
+      io.mesh.position.set(io.x, io.y0 + (io.y1 - io.y0) * io.t, io.z);
+    }
+  }
+
+  function drawApGraph() {
+    if (!apCtx2d) return;
+    const g = apCtx2d, W = apCanvas.width, H = apCanvas.height;
+    g.clearRect(0, 0, W, H);
+    const x0 = 44, x1 = W - 14, yTop = 16, yBot = H - 30;
+    const X = t => x0 + (apWrap(t) / AP_CYCLE) * (x1 - x0);
+    const Y = v => yBot - ((v + 90) / 135) * (yBot - yTop);
+    // reference lines
+    const refs = [
+      { v: -70, c: 'rgba(255,255,255,0.30)', l: 'rest \u221270' },
+      { v: -55, c: 'rgba(242,193,78,0.55)', l: 'threshold \u221255' },
+      { v: 30, c: 'rgba(255,255,255,0.30)', l: 'peak +30' }
+    ];
+    g.font = '19px system-ui, sans-serif';
+    refs.forEach(r => {
+      g.strokeStyle = r.c; g.lineWidth = 2; g.setLineDash([7, 6]);
+      g.beginPath(); g.moveTo(x0, Y(r.v)); g.lineTo(x1, Y(r.v)); g.stroke();
+      g.setLineDash([]);
+      g.fillStyle = r.c; g.fillText(r.l, x0 + 4, Y(r.v) - 6);
+    });
+    // full cycle, faint
+    g.beginPath();
+    for (let t = 0; t <= AP_CYCLE + 1e-6; t += 0.05) {
+      const x = X(t), y = Y(apVoltageAt(t));
+      if (t === 0) g.moveTo(x, y); else g.lineTo(x, y);
+    }
+    g.strokeStyle = 'rgba(255,255,255,0.22)'; g.lineWidth = 3; g.stroke();
+    // elapsed portion, bright
+    const tc = apWrap(ap.t);
+    g.beginPath();
+    for (let t = 0; t <= tc + 1e-6; t += 0.05) {
+      const x = X(t), y = Y(apVoltageAt(t));
+      if (t === 0) g.moveTo(x, y); else g.lineTo(x, y);
+    }
+    g.strokeStyle = '#f2c14e'; g.lineWidth = 5; g.stroke();
+    // current voltage dot
+    g.beginPath();
+    g.arc(X(tc), Y(apVoltageAt(ap.t)), 8, 0, Math.PI * 2);
+    g.fillStyle = '#f2c14e'; g.fill();
+    g.strokeStyle = '#0d1420'; g.lineWidth = 2; g.stroke();
+    // axis labels
+    g.fillStyle = 'rgba(255,255,255,0.45)';
+    g.fillText('mV', 6, yTop + 6);
+    g.fillText('time \u2192', x1 - 64, H - 8);
+  }
+
+  function apUpdate(dt) {
+    if (view !== 'ap' || !apView) return;
+    if (ap.playing) {
+      ap.t = apWrap(ap.t + dt);
+      const ph = apPhaseAt(ap.t);
+      ap.spawnAcc += dt;
+      if (ph.id === 'depol' && ap.spawnAcc > 0.12) {
+        ap.spawnAcc = 0;
+        spawnApIon('na', NA_XS[(Math.random() * NA_XS.length) | 0], 2.3, -2.1);
+      } else if (ph.id === 'repol' && ap.spawnAcc > 0.12) {
+        ap.spawnAcc = 0;
+        spawnApIon('k', K_XS[(Math.random() * K_XS.length) | 0], -2.1, 2.3);
+      } else if ((ph.id === 'rest' || ph.id === 'restore') && ap.spawnAcc > 0.55) {
+        ap.spawnAcc = 0;
+        // pump: 3 Na\u207a out, 2 K\u207a in (stylized single ions)
+        if (Math.random() < 0.6) spawnApIon('na', (Math.random() - 0.5) * 0.3, -1.7, 2.1);
+        else spawnApIon('k', (Math.random() - 0.5) * 0.3, 2.1, -1.7);
+      }
+    }
+    stepApIons(dt);
+    // phase plaque glow
+    const ph = apPhaseAt(ap.t);
+    if (apView.depolPlaque) apView.depolPlaque.userData.setGlow(ph.id === 'depol');
+    if (apView.repolPlaque) apView.repolPlaque.userData.setGlow(ph.id === 'repol');
+    // HUD readouts
+    if (apEls.phase) apEls.phase.textContent = ph.label;
+    if (apEls.vm) apEls.vm.textContent = `${Math.round(apVoltageAt(ap.t))} mV`;
+    drawApGraph();
+  }
 
   function clearContainer() {
     container.traverse(o => {
@@ -431,10 +712,107 @@ export function buildNeuron() {
     }
   }
 
+  /* --------------------------------------- view 3: action potential lab */
+  function channelBarrel(color, poreColor) {
+    const g = new THREE.Group();
+    const outer = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 1.7, 18), mat(color));
+    g.add(outer);
+    const pore = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.82, 14), mat(poreColor));
+    g.add(pore);
+    const rimT = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.07, 10, 20), mat(color));
+    rimT.rotation.x = Math.PI / 2; rimT.position.y = 0.85; g.add(rimT);
+    const rimB = rimT.clone(); rimB.position.y = -0.85; g.add(rimB);
+    return g;
+  }
+
+  function buildApView() {
+    apView = { ionGroup: new THREE.Group(), depolPlaque: null, repolPlaque: null };
+    container.add(apView.ionGroup);
+
+    // --- membrane slab + bilayer hint (decorative, not clickable) ---
+    const mem = new THREE.Mesh(new THREE.BoxGeometry(9, 0.55, 3.4), mat(0x8e7cc3, { roughness: 0.6 }));
+    container.add(noPick(mem));
+    [-0.18, 0.18].forEach(y => {
+      const strip = new THREE.Mesh(new THREE.BoxGeometry(9, 0.1, 3.42), mat(0x6a5aa8));
+      strip.position.set(0, y, 0);
+      container.add(noPick(strip));
+    });
+    // --- fluid regions ---
+    const extra = new THREE.Mesh(new THREE.BoxGeometry(9, 1.9, 3.4), ghost(0x5dade2, 0.10));
+    extra.position.set(0, 1.5, 0); extra.renderOrder = 1;
+    container.add(noPick(extra));
+    const cyto = new THREE.Mesh(new THREE.BoxGeometry(9, 1.9, 3.4), ghost(0x2e86c1, 0.10));
+    cyto.position.set(0, -1.5, 0); cyto.renderOrder = 1;
+    container.add(noPick(cyto));
+    const l1 = makePlaque('extracellular fluid \u00B7 high Na\u207a', '#5dade2', 34);
+    l1.position.set(-2.9, 2.8, 0);
+    container.add(noPick(l1));
+    const l2 = makePlaque('cytosol \u00B7 high K\u207a', '#2e86c1', 34);
+    l2.position.set(2.9, -2.8, 0);
+    container.add(noPick(l2));
+
+    // --- voltage-gated Na+ channels (one part, three barrels) ---
+    {
+      const p = makePart('nachannel', 'apchan', [0, 0, 0]);
+      NA_XS.forEach(x => {
+        const b = channelBarrel(0xe67e22, 0x7e5109);
+        b.position.set(x, 0, 0);
+        p.group.add(b);
+      });
+      push(p);
+    }
+    // --- voltage-gated K+ channels (one part, three barrels) ---
+    {
+      const p = makePart('kchannel', 'apchan', [0, 0, 0]);
+      K_XS.forEach(x => {
+        const b = channelBarrel(0x2ecc71, 0x1e8449);
+        b.position.set(x, 0, 0);
+        p.group.add(b);
+      });
+      push(p);
+    }
+    // --- Na+/K+ pump ---
+    {
+      const p = makePart('napump', 'appump', [0, 0, 0]);
+      const body = ball(0.55, 0x9b59b6);
+      body.scale.set(1, 1.6, 1);
+      p.group.add(body);
+      const capT = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.44, 0.5, 16), mat(0x7d3c98));
+      capT.position.y = 0.85; p.group.add(capT);
+      const capB = capT.clone(); capB.position.y = -0.85; p.group.add(capB);
+      // ATP burst hint: small golden octahedron riding the pump
+      const atp = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), mat(0xf2c14e, { emissive: 0x7a5c14 }));
+      atp.position.set(0.62, 0.35, 0.3);
+      p.group.add(atp);
+      push(p);
+    }
+    // --- phase plaques: clickable, glow during their phase ---
+    {
+      const p = makePart('depol', 'apphase', [-2.6, 3.4, 0], 1.2);
+      const pl = makePlaque('Depolarization \u00B7 Na\u207a in', '#e67e22', 40);
+      p.group.add(pl);
+      apView.depolPlaque = pl;
+      push(p);
+    }
+    {
+      const p = makePart('repol', 'apphase', [2.6, 3.4, 0], 1.2);
+      const pl = makePlaque('Repolarization \u00B7 K\u207a out', '#2ecc71', 40);
+      p.group.add(pl);
+      apView.repolPlaque = pl;
+      push(p);
+    }
+  }
+
   function setView(id) {
     clearContainer();
+    clearApIons();
+    apView = null;
     view = VIEWS.some(v => v.id === id) ? id : 'cell';
-    if (view === 'brain') buildBrainView(); else buildNeuronView();
+    if (view === 'brain') buildBrainView();
+    else if (view === 'ap') { buildApView(); ap.playing = true; }
+    else buildNeuronView();
+    setApOverlayVisible(view === 'ap');
+    if (apEls.play) apEls.play.textContent = ap.playing ? '\u23F8 Pause' : '\u25B6 Play';
     return view;
   }
   function getViewId() { return view; }
@@ -454,6 +832,22 @@ export function buildNeuron() {
     getViewId,
     getContextId,
     get camera() { return CAMERAS[view]; },
-    explodeScale: 1.0
+    explodeScale: 1.0,
+    /* per-frame hook for the action-potential animation (main.js calls it
+     * when present, mirroring the optional applyExplode hook) */
+    update(dt) { apUpdate(dt); },
+    /* teardown for the AP HUD overlay when the atlas is unloaded */
+    dispose() {
+      if (apOverlay && apOverlay.parentNode) apOverlay.parentNode.removeChild(apOverlay);
+      apOverlay = null; apCanvas = null; apCtx2d = null;
+      for (const k of Object.keys(apEls)) delete apEls[k];
+    },
+    /* introspection for headless tests / QA */
+    apDebug: {
+      ionCount: () => ap.ions.length,
+      time: () => ap.t,
+      phase: () => apPhaseAt(ap.t).id,
+      overlayVisible: () => !!(apOverlay && apOverlay.style.display === 'block')
+    }
   };
 }

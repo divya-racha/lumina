@@ -140,6 +140,49 @@ export function masteryKey(atlasId, contextId, partId) {
   return `${atlasId}|${contextId}|${partId}`;
 }
 
+/* Concept Q&A bank for the Neuron Lab action-potential view.
+ * Keyed by part id; used for the micro-quiz 'choice' kind so a phase visit
+ * can quiz the concept (not just the name). answer must be one of options. */
+export const AP_CONCEPTS = {
+  nachannel: {
+    stem: 'Which ion rushes INTO the axon during depolarization?',
+    options: ['Sodium (Na\u207a)', 'Potassium (K\u207a)', 'Calcium (Ca\u00B2\u207a)'],
+    answer: 'Sodium (Na\u207a)'
+  },
+  kchannel: {
+    stem: 'Which ion flows OUT of the axon during repolarization?',
+    options: ['Potassium (K\u207a)', 'Sodium (Na\u207a)', 'Chloride (Cl\u207B)'],
+    answer: 'Potassium (K\u207a)'
+  },
+  napump: {
+    stem: 'What does the sodium-potassium pump do after the action potential?',
+    options: [
+      'Moves 3 Na\u207a out and 2 K\u207a in, using ATP',
+      'Lets Na\u207a flood into the axon',
+      'Blocks K\u207a from leaving the axon'
+    ],
+    answer: 'Moves 3 Na\u207a out and 2 K\u207a in, using ATP'
+  },
+  depol: {
+    stem: 'What happens to the membrane potential during depolarization?',
+    options: [
+      'It rises from \u221270 mV toward +30 mV',
+      'It falls from +30 mV back to \u221270 mV',
+      'It stays locked at \u221270 mV'
+    ],
+    answer: 'It rises from \u221270 mV toward +30 mV'
+  },
+  repol: {
+    stem: 'What drives repolarization?',
+    options: [
+      'K\u207a flowing out of the axon',
+      'Na\u207a rushing into the axon',
+      'The pump burning ATP to open channels'
+    ],
+    answer: 'K\u207a flowing out of the axon'
+  }
+};
+
 function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 /* Turn the part's first description sentence into a fill-in-the-blank stem.
@@ -178,6 +221,15 @@ export function sampleMicroQuestion(part, parts, kindHint) {
     return { kind: 'element', el: part.el, elName: elementName(part), part };
   }
   if (kindHint === 'choice' && parts.length >= 3) {
+    const concept = AP_CONCEPTS[part.id];
+    if (concept) {
+      return {
+        kind: 'choice', part,
+        stem: concept.stem,
+        options: shuffle(concept.options.slice()),
+        answer: concept.answer
+      };
+    }
     const others = shuffle(
       parts.filter(p => p !== part && p.info.name !== part.info.name)).slice(0, 2);
     if (others.length < 2) return null;

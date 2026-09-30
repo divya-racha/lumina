@@ -136,6 +136,7 @@ function updateMasteryLine() {
 /* ---------------------------------------------------------- atlas switch */
 function disposeAtlas() {
   if (!atlas) return;
+  if (typeof atlas.dispose === 'function') atlas.dispose();
   scene.remove(atlas.group);
   atlas.group.traverse(o => {
     if (o.geometry) o.geometry.dispose();
@@ -531,20 +532,21 @@ function startMicro() {
 function microAnswerChoice(q, pickedName) {
   if (!micro.active || micro.locked) return;
   micro.locked = true;
-  const ok = pickedName === q.part.info.name;
+  const rightLabel = q.answer || q.part.info.name; // concept Qs answer with a fact, not a part name
+  const ok = pickedName === rightLabel;
   const fb = $('mfeedback');
   microModal.querySelectorAll('.mchoice').forEach(b => {
-    if (b.textContent === q.part.info.name) b.classList.add('right');
+    if (b.textContent === rightLabel) b.classList.add('right');
     else if (b.textContent === pickedName && !ok) b.classList.add('wrong');
     b.disabled = true;
   });
   if (ok) {
     markLearned(q.part);
     confettiBurst();
-    fb.innerHTML = `\u2705 ${PRAISE[Math.floor(Math.random() * PRAISE.length)]} That's the <b>${escapeHtml(q.part.info.name)}</b>!`;
+    fb.innerHTML = `\u2705 ${PRAISE[Math.floor(Math.random() * PRAISE.length)]} Correct \u2014 <b>${escapeHtml(rightLabel)}</b>!`;
     micro.timer = setTimeout(endMicro, 1600);
   } else {
-    fb.innerHTML = `\uD83D\uDCA1 You'll get it next time \u2014 that's the <b>${escapeHtml(q.part.info.name)}</b>`;
+    fb.innerHTML = `\uD83D\uDCA1 You'll get it next time \u2014 the answer is <b>${escapeHtml(rightLabel)}</b>`;
     micro.timer = setTimeout(() => { endMicro(); selectPart(q.part); }, 1700);
   }
 }
@@ -796,6 +798,7 @@ function animate() {
     }
   }
   controls.update();
+  if (atlas && typeof atlas.update === 'function') atlas.update(dt);
   renderer.render(scene, camera);
   if (firstFrame) {
     firstFrame = false;
