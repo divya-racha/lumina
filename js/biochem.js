@@ -387,6 +387,12 @@ export function buildBiochem() {
      * refreshParts() calls */
     parts.length = 0; bondMeshes = []; bondMat = null;
   }
+  /* tag every part mesh so main.js's raycast picker opens its info card.
+   * Called after EVERY rebuild: step changes create brand-new meshes that
+   * main.js's refreshParts() (view-switch time only) never sees. */
+  function tagParts() {
+    parts.forEach(p => { p.group.traverse(m => { if (m.isMesh) m.userData.part = p; }); });
+  }
 
   function newBondMat() {
     bondMat = new THREE.MeshStandardMaterial({
@@ -712,6 +718,7 @@ export function buildBiochem() {
     krebs.t = 0;
     clearContainer();
     buildKrebsView();
+    tagParts();
     updateKrebsHud();
   }
   function krebsUpdate(dt) {

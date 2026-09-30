@@ -267,6 +267,12 @@ export function buildCell() {
     p.group.position.copy(p.basePos);
     parts.push(p); container.add(p.group);
   }
+  /* tag every part mesh so main.js's raycast picker opens its info card.
+   * Called after EVERY rebuild: stage changes create brand-new meshes that
+   * main.js's refreshParts() (view-switch time only) never sees. */
+  function tagParts() {
+    parts.forEach(p => { p.group.traverse(m => { if (m.isMesh) m.userData.part = p; }); });
+  }
 
   /* ------------------------------ view 1: the cell --------------------- */
   function buildCellView() {
@@ -738,6 +744,7 @@ export function buildCell() {
     mito.t = 0;
     clearContainer();
     buildMitosisView();
+    tagParts();
     updateMitoHud();
   }
   function mitoUpdate(dt) {
