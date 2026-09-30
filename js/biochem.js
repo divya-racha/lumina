@@ -227,6 +227,116 @@ const AMINO_ACIDS = [
     exam: 'pKa ≈ 6 — the only side chain that titrates near pH 7; classic enzyme acid–base catalyst.' }
 ];
 
+/* ---------------- Krebs cycle view (OpenStax Biology 2e, Ch. 7) ------------- */
+/* Node info: clickable intermediates around the cycle. */
+const KREBS_INFO = {
+  'k-oxaloacetate': {
+    name: 'Oxaloacetate', tag: 'Krebs cycle',
+    desc: ['Oxaloacetate is the 4-carbon molecule that starts and ends every turn of the cycle — it is consumed in step 1 and regenerated in step 8.',
+      'Because the starting material is remade, the pathway is a true cycle: it keeps turning as long as acetyl-CoA arrives.'],
+    exam: '4 carbons, regenerated each turn. Starting material AND end product — that is why it is a cycle.' },
+  'k-citrate': {
+    name: 'Citrate', tag: 'Krebs cycle',
+    desc: ['Citrate is the 6-carbon molecule formed when acetyl-CoA (2 carbons) joins oxaloacetate (4 carbons).',
+      'The enzyme citrate synthase drives this condensation — a regulated, irreversible step and the cycle\u2019s entry point.'],
+    exam: '6C = 4C (oxaloacetate) + 2C (acetyl-CoA). The cycle\u2019s committed entry step.' },
+  'k-isocitrate': {
+    name: 'Isocitrate', tag: 'Krebs cycle',
+    desc: ['Isocitrate is citrate rearranged: the enzyme aconitase moves the –OH group from one carbon to the next.',
+      'No carbons are lost and no energy carriers are made here — it simply sets up the first decarboxylation.'],
+    exam: 'Rearrangement only (water leaves, then returns). No CO\u2082, no NADH at this step.' },
+  'k-alphakg': {
+    name: '\u03B1-Ketoglutarate', tag: 'Krebs cycle',
+    desc: ['\u03B1-Ketoglutarate is a 5-carbon molecule: isocitrate loses one CO\u2082 and gives up electrons to make the cycle\u2019s first NADH.',
+      'Beyond the cycle it is a biosynthetic hub — cells convert it into glutamate and other amino acids.'],
+    exam: 'First CO\u2082 out, first NADH made. 6C \u2192 5C. Also a precursor for amino-acid synthesis.' },
+  'k-succinylcoa': {
+    name: 'Succinyl-CoA', tag: 'Krebs cycle',
+    desc: ['Succinyl-CoA carries a high-energy thioester bond (the –CoA part) left over from a second round of CO\u2082 + NADH release.',
+      'That bond\u2019s energy is spent in the next step to attach a phosphate — the cycle\u2019s only substrate-level phosphorylation.'],
+    exam: 'High-energy thioester \u2192 its energy pays for the GTP made in the next step.' },
+  'k-succinate': {
+    name: 'Succinate', tag: 'Krebs cycle',
+    desc: ['Succinate is a 4-carbon molecule freed when the CoA is swapped for a phosphate, making GTP (equivalent to ATP).',
+      'Its oxidation is handled by succinate dehydrogenase — which is also Complex II of the electron transport chain, sitting in the inner mitochondrial membrane.'],
+    exam: 'Succinate \u2192 fumarate makes FADH\u2082 (not NADH) — and the enzyme IS Complex II of the ETC.' },
+  'k-fumarate': {
+    name: 'Fumarate', tag: 'Krebs cycle',
+    desc: ['Fumarate is succinate with a new carbon–carbon double bond, formed when FAD picks up the removed hydrogens.',
+      'The enzyme fumarase then adds a water molecule across that double bond to make malate.'],
+    exam: 'Has a C=C double bond — fumarase hydrates it (adds H\u2082O) to give malate.' },
+  'k-malate': {
+    name: 'Malate', tag: 'Krebs cycle',
+    desc: ['Malate is the last 4-carbon intermediate. Malate dehydrogenase oxidizes it back into oxaloacetate.',
+      'That oxidation produces the cycle\u2019s third NADH — the final energy-carrier payoff of the turn.'],
+    exam: 'Malate \u2192 oxaloacetate makes the 3rd NADH and regenerates the starting material.' },
+  'k-acetylcoa': {
+    name: 'Acetyl-CoA', tag: 'Krebs cycle',
+    desc: ['Acetyl-CoA is the 2-carbon fuel that enters the cycle, made from pyruvate by pyruvate oxidation (or from fatty-acid breakdown).',
+      'Each glucose yields 2 pyruvate \u2192 2 acetyl-CoA, so the cycle turns TWICE per glucose.'],
+    exam: '2C fuel in. Per glucose the cycle runs twice — double all per-turn totals.' }
+};
+
+/* Intermediates in cycle order (step i runs NODES[i] -> NODES[i+1 mod 8]). */
+const KREBS_NODES = [
+  { id: 'k-oxaloacetate', name: 'Oxaloacetate',  formula: 'C\u2084' },
+  { id: 'k-citrate',      name: 'Citrate',       formula: 'C\u2086' },
+  { id: 'k-isocitrate',    name: 'Isocitrate',    formula: 'C\u2086' },
+  { id: 'k-alphakg',       name: '\u03B1-Ketoglutarate', formula: 'C\u2085' },
+  { id: 'k-succinylcoa',   name: 'Succinyl-CoA',  formula: 'C\u2084' },
+  { id: 'k-succinate',     name: 'Succinate',     formula: 'C\u2084' },
+  { id: 'k-fumarate',      name: 'Fumarate',      formula: 'C\u2084' },
+  { id: 'k-malate',        name: 'Malate',        formula: 'C\u2084' }
+];
+
+/* The 8 steps. Exported pure so tests can verify the chain and the totals. */
+export const KREBS_STEPS = [
+  { from: 'k-oxaloacetate', to: 'k-citrate',
+    name: 'Oxaloacetate + acetyl-CoA \u2192 Citrate',
+    inputs: ['Acetyl-CoA'], outputs: [],
+    detail: 'Citrate synthase condenses acetyl-CoA with oxaloacetate. Irreversible entry step.' },
+  { from: 'k-citrate', to: 'k-isocitrate',
+    name: 'Citrate \u2192 Isocitrate',
+    inputs: [], outputs: [],
+    detail: 'Aconitase rearranges citrate (water leaves, then returns). No redox, no carbon lost.' },
+  { from: 'k-isocitrate', to: 'k-alphakg',
+    name: 'Isocitrate \u2192 \u03B1-Ketoglutarate',
+    inputs: [], outputs: ['CO\u2082', 'NADH'],
+    detail: 'First oxidative decarboxylation: one CO\u2082 released, first NADH made.' },
+  { from: 'k-alphakg', to: 'k-succinylcoa',
+    name: '\u03B1-Ketoglutarate \u2192 Succinyl-CoA',
+    inputs: [], outputs: ['CO\u2082', 'NADH'],
+    detail: 'Second oxidative decarboxylation: another CO\u2082 and NADH.' },
+  { from: 'k-succinylcoa', to: 'k-succinate',
+    name: 'Succinyl-CoA \u2192 Succinate',
+    inputs: [], outputs: ['GTP'],
+    detail: 'Substrate-level phosphorylation: the thioester\u2019s energy makes GTP (\u2248 ATP).' },
+  { from: 'k-succinate', to: 'k-fumarate',
+    name: 'Succinate \u2192 Fumarate',
+    inputs: [], outputs: ['FADH\u2082'],
+    detail: 'Succinate dehydrogenase (Complex II of the ETC) oxidizes succinate; FAD \u2192 FADH\u2082.' },
+  { from: 'k-fumarate', to: 'k-malate',
+    name: 'Fumarate \u2192 Malate',
+    inputs: ['H\u2082O'], outputs: [],
+    detail: 'Fumarase adds water across the C=C double bond.' },
+  { from: 'k-malate', to: 'k-oxaloacetate',
+    name: 'Malate \u2192 Oxaloacetate',
+    inputs: [], outputs: ['NADH'],
+    detail: 'Malate dehydrogenase oxidizes malate, regenerating oxaloacetate and the third NADH.' }
+];
+
+/* Per-turn yield (per acetyl-CoA). ×2 per glucose. */
+export const KREBS_TOTALS = { 'CO\u2082': 2, 'NADH': 3, 'FADH\u2082': 1, 'GTP': 1 };
+
+const BIOCHEM_VIEWS = [
+  { id: 'aa',    label: '\uD83E\uDDEA Amino acids' },
+  { id: 'krebs', label: '\uD83D\uDD04 Krebs cycle' }
+];
+const BIOCHEM_CAMERAS = {
+  aa:    { pos: [5.2, 3.6, 6.6], target: [0, 1.4, 0] },
+  krebs: { pos: [0, 1.0, 11.0],   target: [0, 0.2, 0] }
+};
+
 /* Backbone part templates (shared text; tag is stamped with the current
  * amino acid name at build time). */
 function backboneInfo(kind, aaName) {
@@ -260,6 +370,12 @@ export function buildBiochem() {
   let bondMat = null;
   let current = AMINO_ACIDS[1]; // alanine — simple, representative default
   let lastT = 0;
+  let view = 'aa';
+
+  /* ------------------ krebs view: animation + HUD state ----------------- */
+  const krebs = { step: 0, playing: true, t: 0 };
+  const krebsEls = {};
+  let krebsOverlay = null;
 
   function clearContainer() {
     container.traverse(o => {
@@ -267,7 +383,9 @@ export function buildBiochem() {
       if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose());
     });
     container.clear();
-    parts = []; bondMeshes = []; bondMat = null;
+    /* keep the SAME array identity: main.js holds this reference between
+     * refreshParts() calls */
+    parts.length = 0; bondMeshes = []; bondMat = null;
   }
 
   function newBondMat() {
@@ -297,6 +415,13 @@ export function buildBiochem() {
   }
 
   function setMolecule(id) {
+    if (view === 'krebs') {
+      // leave the krebs view cleanly before showing a molecule
+      // (main.js calls setMolecule directly during MCAT packs)
+      current = AMINO_ACIDS.find(a => a.id === id) || AMINO_ACIDS[1];
+      setView('aa');
+      return;
+    }
     clearContainer();
     newBondMat();
     current = AMINO_ACIDS.find(a => a.id === id) || AMINO_ACIDS[1];
@@ -373,6 +498,242 @@ export function buildBiochem() {
     bondMeshes.forEach(b => { b.material.opacity = Math.max(0.06, 1 - t * 0.94); });
   }
 
+  /* ------------------------------ krebs view --------------------------- */
+  const KREBS_R = 3.2;
+  const KREBS_COLORS = [0x5dade2, 0x58d68d, 0xf5b041, 0xec7063,
+                        0xaf7ac5, 0x48c9b0, 0xf1948a, 0x85c1e9];
+  function krebsNodePos(i) {
+    const a = Math.PI / 2 + i * (Math.PI / 4);
+    return [Math.cos(a) * KREBS_R, Math.sin(a) * KREBS_R];
+  }
+  function krebsNoPick(o) { o.traverse(m => { m.userData.noPick = true; }); return o; }
+
+  /* Floating text plaque (canvas texture), decorative. */
+  function krebsPlaque(title, sub, accent = '#5dade2') {
+    const fs = 40, padX = 30, padY = 22;
+    const meas = document.createElement('canvas').getContext('2d');
+    meas.font = `700 ${fs}px system-ui, -apple-system, sans-serif`;
+    const tw = Math.ceil(meas.measureText(title).width);
+    const c = document.createElement('canvas');
+    c.width = tw + padX * 2;
+    c.height = fs + padY * 2 + (sub ? 36 : 0);
+    const g = c.getContext('2d');
+    g.fillStyle = 'rgba(13,22,36,0.88)';
+    g.strokeStyle = accent; g.lineWidth = 5;
+    g.beginPath();
+    const r = 26, w = c.width, h = c.height;
+    g.moveTo(r, 4);
+    g.arcTo(w - 4, 4, w - 4, h - 4, r);
+    g.arcTo(w - 4, h - 4, 4, h - 4, r);
+    g.arcTo(4, h - 4, 4, 4, r);
+    g.arcTo(4, 4, w - 4, 4, r);
+    g.closePath();
+    g.fill(); g.stroke();
+    g.font = `700 ${fs}px system-ui, -apple-system, sans-serif`;
+    g.fillStyle = '#eaf2f8'; g.textBaseline = 'middle';
+    g.fillText(title, padX, padY + fs / 2 + 2);
+    if (sub) {
+      g.font = `600 30px system-ui, -apple-system, sans-serif`;
+      g.fillStyle = '#a9cce3';
+      g.fillText(sub, padX, padY + fs + 34);
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const H = 0.55, W = H * (c.width / c.height);
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(W, H),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide })
+    );
+    return krebsNoPick(m);
+  }
+
+  /** Tube (cylinder) between two points, decorative or pickable. */
+  function krebsTube(a, b, r, color) {
+    const va = new THREE.Vector3(...a), vb = new THREE.Vector3(...b);
+    const len = Math.max(va.distanceTo(vb), 0.01);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 10), mat(color));
+    m.position.copy(va).lerp(vb, 0.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), vb.clone().sub(va).normalize());
+    return m;
+  }
+  function krebsArrowhead(at, dir, s, color) {
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.11 * s, 0.28 * s, 12), mat(color));
+    cone.position.set(...at);
+    cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0),
+      new THREE.Vector3(...dir).normalize());
+    return cone;
+  }
+
+  function buildKrebsView() {
+    const step = KREBS_STEPS[krebs.step];
+    const activeCol = 0xf2c14e, idleCol = 0x566573;
+
+    // --- arcs between consecutive intermediates; current step glows ---
+    KREBS_STEPS.forEach((st, i) => {
+      const a0 = Math.PI / 2 + i * (Math.PI / 4);
+      const active = i === krebs.step;
+      const arc = new THREE.Mesh(
+        new THREE.TorusGeometry(KREBS_R, active ? 0.075 : 0.045, 10, 28, Math.PI / 4 - 0.24),
+        mat(active ? activeCol : idleCol));
+      arc.rotation.z = a0 + 0.12;
+      arc.userData.noPick = true;
+      container.add(arc);
+      const ae = a0 + Math.PI / 4 - 0.12;
+      const ah = krebsArrowhead(
+        [Math.cos(ae) * KREBS_R, Math.sin(ae) * KREBS_R, 0],
+        [-Math.sin(ae), Math.cos(ae), 0], active ? 1.4 : 1.0,
+        active ? activeCol : idleCol);
+      ah.userData.noPick = true;
+      container.add(ah);
+    });
+
+    // --- intermediate nodes: clickable parts ---
+    KREBS_NODES.forEach((nd, i) => {
+      const [x, y] = krebsNodePos(i);
+      const active = step.from === nd.id || step.to === nd.id;
+      const p = {
+        id: nd.id,
+        system: 'krebs',
+        info: KREBS_INFO[nd.id],
+        group: new THREE.Group(),
+        basePos: new THREE.Vector3(x, y, 0),
+        explodeDir: new THREE.Vector3(x, y, 0).normalize(),
+        explodeDist: 0.9
+      };
+      const s = new THREE.Mesh(
+        new THREE.SphereGeometry(active ? 0.5 : 0.42, 28, 22),
+        mat(KREBS_COLORS[i], active
+          ? { emissive: 0xf2c14e, emissiveIntensity: 0.5 } : {}));
+      p.group.add(s);
+      const pl = krebsPlaque(nd.name, nd.formula);
+      pl.position.set(0, -1.0, 0);
+      p.group.add(pl);
+      p.group.position.set(x, y, 0);
+      parts.push(p); container.add(p.group);
+    });
+
+    // --- acetyl-CoA entry node, feeding the oxaloacetate -> citrate arc ---
+    {
+      const aMid = Math.PI / 2 + Math.PI / 8;
+      const ax = Math.cos(aMid) * 5.5, ay = Math.sin(aMid) * 5.5;
+      const p = {
+        id: 'k-acetylcoa',
+        system: 'krebs',
+        info: KREBS_INFO['k-acetylcoa'],
+        group: new THREE.Group(),
+        basePos: new THREE.Vector3(ax, ay, 0),
+        explodeDir: new THREE.Vector3(ax, ay, 0).normalize(),
+        explodeDist: 0.9
+      };
+      p.group.add(new THREE.Mesh(new THREE.SphereGeometry(0.42, 28, 22), mat(0xe67e22)));
+      const pl = krebsPlaque('Acetyl-CoA', 'C\u2082 \u00B7 enters here', '#e67e22');
+      pl.position.set(0, -1.0, 0);
+      p.group.add(pl);
+      const mid = [Math.cos(aMid) * KREBS_R, Math.sin(aMid) * KREBS_R, 0];
+      const start = [ax * 0.86, ay * 0.86, 0];
+      const tube = krebsTube(start, mid, 0.06, 0xe67e22);
+      tube.userData.noPick = true;
+      container.add(tube);
+      const dir = [mid[0] - start[0], mid[1] - start[1], 0];
+      const ah = krebsArrowhead(mid, dir, 1.2, 0xe67e22);
+      ah.userData.noPick = true;
+      container.add(ah);
+      p.group.position.set(ax, ay, 0);
+      parts.push(p); container.add(p.group);
+    }
+
+    // --- center caption (decorative) ---
+    const cap = krebsPlaque('Krebs cycle', 'mitochondrial matrix', '#f2c14e');
+    cap.scale.set(0.9, 0.9, 0.9);
+    container.add(cap);
+    updateKrebsHud();
+  }
+
+  /* --------------------------- krebs HUD overlay ----------------------- */
+  function kel(tag, id, parent, text, cls) {
+    const e = document.createElement(tag);
+    if (id) e.id = id;
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function krebsIoText(st) {
+    const ins = st.inputs.length ? st.inputs.join(' + ') : '\u2014';
+    const outs = st.outputs.length ? st.outputs.join(' + ') : '\u2014';
+    return `in: ${ins}  \u00B7  out: ${outs}`;
+  }
+  function ensureKrebsOverlay() {
+    if (krebsOverlay) return;
+    krebsOverlay = document.createElement('div');
+    krebsOverlay.id = 'krebs-panel';
+    const head = kel('div', null, krebsOverlay, null, 'ap-head');
+    kel('span', null, head, '\uD83D\uDD04 Krebs cycle');
+    krebsEls.step = kel('span', 'krebs-step', head, 'Step 1 / 8');
+    krebsEls.name = kel('div', 'krebs-name', krebsOverlay, KREBS_STEPS[0].name);
+    krebsEls.io = kel('div', 'krebs-io', krebsOverlay, krebsIoText(KREBS_STEPS[0]));
+    krebsEls.detail = kel('div', 'krebs-detail', krebsOverlay, KREBS_STEPS[0].detail);
+    kel('div', null, krebsOverlay,
+      'Per turn (per acetyl-CoA): 2 CO\u2082 \u00B7 3 NADH \u00B7 1 FADH\u2082 \u00B7 1 GTP \u2014 \u00D72 per glucose',
+      'krebs-totals');
+    const ctrls = kel('div', null, krebsOverlay, null, 'ap-controls');
+    krebsEls.prev = kel('button', 'krebs-prev', ctrls, '\u23EE Prev');
+    krebsEls.play = kel('button', 'krebs-play', ctrls, '\u23F8 Pause');
+    krebsEls.next = kel('button', 'krebs-next', ctrls, '\u23ED Next');
+    krebsEls.reset = kel('button', 'krebs-reset', ctrls, '\u21BA Reset');
+    const setPlayLabel = () => {
+      krebsEls.play.textContent = krebs.playing ? '\u23F8 Pause' : '\u25B6 Play';
+    };
+    krebsEls.play.addEventListener('click', () => { krebs.playing = !krebs.playing; setPlayLabel(); });
+    krebsEls.prev.addEventListener('click', () => setKrebsStep(krebs.step - 1));
+    krebsEls.next.addEventListener('click', () => setKrebsStep(krebs.step + 1));
+    krebsEls.reset.addEventListener('click', () => {
+      krebs.playing = true; setPlayLabel(); setKrebsStep(0);
+    });
+    document.body.appendChild(krebsOverlay);
+    setPlayLabel();
+  }
+  function updateKrebsHud() {
+    if (!krebsOverlay) return;
+    const st = KREBS_STEPS[krebs.step];
+    krebsEls.step.textContent = `Step ${krebs.step + 1} / ${KREBS_STEPS.length}`;
+    krebsEls.name.textContent = st.name;
+    krebsEls.io.textContent = krebsIoText(st);
+    krebsEls.detail.textContent = st.detail;
+  }
+  function setKrebsOverlayVisible(on) {
+    ensureKrebsOverlay();
+    krebsOverlay.style.display = on ? 'block' : 'none';
+    updateKrebsHud();
+  }
+
+  function setKrebsStep(i) {
+    krebs.step = ((i % KREBS_STEPS.length) + KREBS_STEPS.length) % KREBS_STEPS.length;
+    krebs.t = 0;
+    clearContainer();
+    buildKrebsView();
+    updateKrebsHud();
+  }
+  function krebsUpdate(dt) {
+    if (view !== 'krebs') return;
+    if (krebs.playing) {
+      krebs.t += dt;
+      if (krebs.t > 3.5) setKrebsStep(krebs.step + 1);
+    }
+  }
+
+  /* ------------------------------ view wiring -------------------------- */
+  function setView(id) {
+    clearContainer();
+    view = BIOCHEM_VIEWS.some(v => v.id === id) ? id : 'aa';
+    if (view === 'krebs') { setKrebsStep(krebs.step); krebs.playing = true; }
+    else setMolecule(current.id);
+    setKrebsOverlayVisible(view === 'krebs');
+    if (krebsEls.play) krebsEls.play.textContent = krebs.playing ? '\u23F8 Pause' : '\u25B6 Play';
+    return view;
+  }
+  function getViewId() { return view; }
+
   const api = {
     id: 'biochem',
     label: 'Biochem Corner',
@@ -383,14 +744,34 @@ export function buildBiochem() {
     moleculeGroups: GROUPS,
     moleculeList: AMINO_ACIDS.map(a => ({
       id: a.id, name: a.name, formula: `${a.code3} · ${a.code1}`, group: a.group })),
+    /* the amino-acid switcher only makes sense in the amino-acids view */
+    get showMolecules() { return view === 'aa'; },
     setMolecule,
     setAminoAcid: setMolecule,
-    getMoleculeInfo,
+    /* no molecule info card while the Krebs cycle is showing */
+    getMoleculeInfo: () => (view === 'krebs' ? null : getMoleculeInfo()),
     applyExplode,
-    getContextId: () => current.id,
-    camera: { pos: [5.2, 3.6, 6.6], target: [0, 1.4, 0] },
-    explodeScale: 1.0
+    viewList: BIOCHEM_VIEWS,
+    setView,
+    getViewId,
+    getContextId: () => (view === 'krebs' ? 'krebs' : current.id),
+    get camera() { return BIOCHEM_CAMERAS[view]; },
+    explodeScale: 1.0,
+    /* per-frame hook for the Krebs auto-step (main.js calls it when present) */
+    update(dt) { krebsUpdate(dt); },
+    /* teardown for the Krebs HUD overlay when the atlas is unloaded */
+    dispose() {
+      if (krebsOverlay && krebsOverlay.parentNode) krebsOverlay.parentNode.removeChild(krebsOverlay);
+      krebsOverlay = null;
+      for (const k of Object.keys(krebsEls)) delete krebsEls[k];
+    },
+    /* introspection for headless tests / QA */
+    krebsDebug: {
+      step: () => krebs.step,
+      stepId: () => `${KREBS_STEPS[krebs.step].from}\u2192${KREBS_STEPS[krebs.step].to}`,
+      overlayVisible: () => !!(krebsOverlay && krebsOverlay.style.display === 'block')
+    }
   };
-  setMolecule('ala');
+  setView('aa');
   return api;
 }

@@ -123,6 +123,52 @@ const INFO = {
       'Although it is 70\u201380 percent water, dissolved proteins give it a semi-solid consistency. Many metabolic reactions, including protein synthesis, take place here.'
     ],
     exam: 'Cytosol = the fluid; cytoplasm = cytosol plus organelles.'
+  },
+  /* ------------------------- mitosis view parts (OpenStax Ch. 10) ------ */
+  'mito-chromosomes': {
+    name: 'Chromosomes (Sister Chromatids)',
+    tag: 'Mitosis',
+    desc: [
+      'Each duplicated chromosome consists of two identical sister chromatids joined at the centromere, giving the familiar X shape.',
+      'A human body cell entering mitosis carries 46 duplicated chromosomes (92 chromatids). This animation shows 4 for clarity.'
+    ],
+    exam: 'Metaphase = chromosomes line up at the metaphase plate. Anaphase = sister chromatids separate to opposite poles.'
+  },
+  'mito-spindle': {
+    name: 'Spindle Fibers',
+    tag: 'Mitosis',
+    desc: [
+      'The mitotic spindle is built from microtubules that grow out of the two centrosomes at opposite poles of the cell.',
+      'Kinetochore fibers attach to each chromatid and pull; other spindle fibers push the poles apart, elongating the cell.'
+    ],
+    exam: 'Spindle = microtubules. Motor proteins walk the chromatids toward the poles along them.'
+  },
+  'mito-centrioles': {
+    name: 'Centrioles (Centrosome)',
+    tag: 'Mitosis',
+    desc: [
+      'The centrosome — a pair of centrioles — is the microtubule-organizing center of animal cells. In prophase the two centrosomes migrate to opposite poles.',
+      'From each pole they nucleate the spindle fibers that separate the chromosomes. Plant cells build spindles with no centrioles at all.'
+    ],
+    exam: 'Animal cells: centrioles organize the spindle. Plant cells: no centrioles, spindle still forms.'
+  },
+  'mito-envelope': {
+    name: 'Nuclear Envelope',
+    tag: 'Mitosis',
+    desc: [
+      'The nuclear envelope breaks down during prometaphase so that spindle fibers can reach the chromosomes.',
+      'In telophase it reforms around each separated set of chromosomes, creating two new nuclei.'
+    ],
+    exam: 'Envelope breaks down AFTER prophase (prometaphase) and reforms in telophase — a classic ordering question.'
+  },
+  'mito-furrow': {
+    name: 'Cleavage Furrow',
+    tag: 'Mitosis',
+    desc: [
+      'In animal cells, cytokinesis pinches the cell in two: a contractile ring of actin filaments tightens like a drawstring, forming the cleavage furrow.',
+      'Plant cells cannot pinch through a rigid wall — instead they build a cell plate across the middle that becomes the new cell wall.'
+    ],
+    exam: 'Animal = cleavage furrow (actin ring). Plant = cell plate. Know which goes with which.'
   }
 };
 
@@ -168,10 +214,62 @@ function addMesh(part, mesh, x = 0, y = 0, z = 0) {
 }
 
 /* ----------------------------------------------------------------- build */
+/* Mitosis stage timeline (OpenStax Biology 2e, Ch. 10 — Cell Reproduction).
+ * Exported pure so tests can verify stage order and copy. */
+export const MITOSIS_STAGES = [
+  { id: 'interphase',   label: 'Interphase',
+    blurb: 'The cell grows and copies its DNA. Chromosomes are loose chromatin — not yet visible as X shapes.' },
+  { id: 'prophase',     label: 'Prophase',
+    blurb: 'Chromatin condenses into X-shaped chromosomes. Centrosomes migrate to opposite poles; the spindle begins to form.' },
+  { id: 'metaphase',    label: 'Metaphase',
+    blurb: 'Chromosomes align along the metaphase plate at the cell\u2019s equator, attached to spindle fibers.' },
+  { id: 'anaphase',     label: 'Anaphase',
+    blurb: 'Sister chromatids separate and are pulled to opposite poles — the shortest, most dramatic stage.' },
+  { id: 'telophase',    label: 'Telophase',
+    blurb: 'Chromosomes arrive at the poles and decondense. A nuclear envelope reforms around each set.' },
+  { id: 'cytokinesis',  label: 'Cytokinesis',
+    blurb: 'The cytoplasm divides: a cleavage furrow pinches one cell into two daughter cells.' }
+];
+
+const CELL_VIEWS = [
+  { id: 'cell',    label: '\uD83D\uDD2C Cell' },
+  { id: 'mitosis', label: '\uD83E\uDDEC Mitosis' }
+];
+const CELL_CAMERAS = {
+  cell:    { pos: [5.4, 3.4, 6.4], target: [0, 0.2, 0] },
+  mitosis: { pos: [0, 2.4, 10.4],  target: [0, 0, 0] }
+};
+
 export function buildCell() {
   const group = new THREE.Group();
+  const container = new THREE.Group();
+  group.add(container);
   const parts = [];
   const R = 3; // cell radius
+  let view = 'cell';
+
+  /* ------------------- mitosis view: animation + HUD state ------------- */
+  const mito = { stage: 0, playing: true, t: 0 };
+  const mitoEls = {};
+  let mitoOverlay = null;
+
+  function clearContainer() {
+    container.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose());
+    });
+    container.clear();
+    /* keep the SAME array identity: main.js holds this reference between
+     * refreshParts() calls */
+    parts.length = 0;
+  }
+  function push(p) {
+    p.group.position.copy(p.basePos);
+    parts.push(p); container.add(p.group);
+  }
+
+  /* ------------------------------ view 1: the cell --------------------- */
+  function buildCellView() {
 
   const radial = (x, y, z, d = 1.7) =>
     makePart(null, null, [x, y, z],
@@ -189,7 +287,7 @@ export function buildCell() {
     p.group.add(inner);
     p.info = INFO.membrane;
     p.pickThrough = true; // let clicks pass to organelles inside; membrane picked at rim
-    parts.push(p); group.add(p.group);
+    push(p);
   }
 
   // --- cytoplasm: soft inner volume hint ---
@@ -199,7 +297,7 @@ export function buildCell() {
     const m = new THREE.Mesh(new THREE.SphereGeometry(R * 0.96, 32, 24), ghost(0x1a5276, 0.10));
     m.renderOrder = 1;
     p.group.add(m);
-    parts.push(p); group.add(p.group);
+    push(p);
   }
 
   // --- nucleus + envelope ---
@@ -214,14 +312,14 @@ export function buildCell() {
       t.rotation.set(Math.random() * 3, Math.random() * 3, 0);
       p.group.add(t);
     }
-    parts.push(p); group.add(p.group);
+    push(p);
   }
 
   // --- nucleolus ---
   {
     const p = radial(-0.55, 0.75, 0.45); p.id = 'nucleolus'; p.system = 'Genetic control'; p.info = INFO.nucleolus;
     addMesh(p, ball(0.34, 0x2c1a33), 0, 0, 0);
-    parts.push(p); group.add(p.group);
+    push(p);
   }
 
   // --- mitochondria x3 ---
@@ -250,7 +348,7 @@ export function buildCell() {
         h.position.copy(h.userData.base).addScaledVector(h.userData.dir, t * 1.7);
       });
     };
-    parts.push(p); group.add(p.group);
+    push(p);
   }
 
   // --- rough ER: stacked curved sheets with ribosome dots ---
@@ -273,7 +371,7 @@ export function buildCell() {
         p.group.add(dot);
       }
     }
-    parts.push(p); group.add(p.group);
+    push(p);
   }
 
   // --- smooth ER: tubular loops ---
@@ -285,7 +383,7 @@ export function buildCell() {
       loop.rotation.set(i * 0.7, i * 1.1, 0);
       p.group.add(loop);
     }
-    parts.push(p); group.add(p.group);
+    push(p);
   }
 
   // --- Golgi: stacked curved discs ---
@@ -303,7 +401,7 @@ export function buildCell() {
     }
     // budding vesicle
     addMesh(p, ball(0.16, 0xf5b041), 0.85, 0.35, 0.2);
-    parts.push(p); group.add(p.group);
+    push(p);
   }
 
   // --- ribosomes: scattered dots (one clickable part) ---
@@ -329,7 +427,7 @@ export function buildCell() {
         h.position.copy(h.userData.base).addScaledVector(h.userData.dir, t * 1.7);
       });
     };
-    parts.push(p); group.add(p.group);
+    push(p);
   }
 
   // --- lysosomes x3 ---
@@ -351,7 +449,7 @@ export function buildCell() {
         h.position.copy(h.userData.base).addScaledVector(h.userData.dir, t * 1.7);
       });
     };
-    parts.push(p); group.add(p.group);
+    push(p);
   }
 
   // --- vacuole ---
@@ -359,7 +457,7 @@ export function buildCell() {
     const p = radial(1.1, 1.7, 1.1); p.id = 'vacuole'; p.system = 'Endomembrane system'; p.info = INFO.vacuole;
     const v = new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 18), ghost(0x85c1e9, 0.5));
     p.group.add(v);
-    parts.push(p); group.add(p.group);
+    push(p);
   }
 
   // --- centrioles: two perpendicular cylinders ---
@@ -376,7 +474,7 @@ export function buildCell() {
       band.rotation.x = Math.PI / 2; band.position.y = i * 0.18;
       c1.add(band);
     }
-    parts.push(p); group.add(p.group);
+    push(p);
   }
 
   // --- cytoskeleton: thin struts ---
@@ -406,18 +504,292 @@ export function buildCell() {
         s.position.copy(s.userData.base).addScaledVector(s.userData.dir, t * 0.9);
       });
     };
-    parts.push(p); group.add(p.group);
+    push(p);
   }
+  } // end buildCellView
+
+  /* --------------------------- view 2: mitosis ------------------------- */
+  /** Clickable mitosis part. Explode pushes radially from the scene center. */
+  function mitoPart(id, x, y, z, dist = 1.3) {
+    const zero = (x === 0 && y === 0 && z === 0);
+    return makePart(id, 'Support & division', [x, y, z],
+      zero ? [0, 1, 0] : [x, y * 0.9, z], dist);
+  }
+  function noPick(o) { o.traverse(m => { m.userData.noPick = true; }); return o; }
+
+  /** X-shaped duplicated chromosome (two sister chromatids + centromere). */
+  function xChromo(color = 0x4a90d9) {
+    const g = new THREE.Group();
+    const c1 = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.5, 6, 12), mat(color));
+    const c2 = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.5, 6, 12), mat(color));
+    c1.rotation.z = 0.5; c2.rotation.z = -0.5;
+    g.add(c1, c2);
+    g.add(ball(0.07, 0xf2c14e, 10, 8)); // centromere
+    return g;
+  }
+  /** Single chromatid (after sister-chromatid separation). */
+  function chromatid(color = 0x4a90d9) {
+    return new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.45, 6, 12), mat(color));
+  }
+  /** Thin cylinder from a to b (a spindle fiber). */
+  function fiber(a, b, r = 0.022) {
+    const va = new THREE.Vector3(...a), vb = new THREE.Vector3(...b);
+    const len = Math.max(va.distanceTo(vb), 0.01);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 6), mat(0x95a5a6));
+    m.position.copy(va).lerp(vb, 0.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), vb.clone().sub(va).normalize());
+    return m;
+  }
+  /** One centrosome: two centrioles at right angles. */
+  function centrosome() {
+    const g = new THREE.Group();
+    const c1 = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.42, 12), mat(0x5d6d7e));
+    const c2 = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.42, 12), mat(0x5d6d7e));
+    c2.rotation.z = Math.PI / 2; c2.position.set(0.24, 0.08, 0.12);
+    g.add(c1, c2);
+    return g;
+  }
+  /** Loose chromatin threads (decorative, not clickable). */
+  function chromatin(cx, cy, cz, r, n = 4) {
+    const g = new THREE.Group();
+    for (let i = 0; i < n; i++) {
+      const t = new THREE.Mesh(new THREE.TorusGeometry(r * (0.55 + 0.12 * i), 0.03, 8, 28), mat(0x4a235a));
+      t.position.set(cx, cy, cz);
+      t.rotation.set(i * 1.1, i * 0.7, 0);
+      g.add(t);
+    }
+    return noPick(g);
+  }
+
+  function buildMitosisView() {
+    const s = mito.stage;
+    const POLE = 2.2;
+
+    // --- cell membrane: one sphere, or two daughters in cytokinesis ---
+    if (s === 5) {
+      [-1.6, 1.6].forEach(x => {
+        const m = new THREE.Mesh(new THREE.SphereGeometry(1.9, 40, 28), ghost(0x5dade2, 0.13));
+        m.position.set(x, 0, 0); m.renderOrder = 10;
+        container.add(noPick(m));
+        container.add(chromatin(x, 0, 0, 0.7, 3));
+      });
+      const pf = mitoPart('mito-furrow', 0, 0, 0, 0.5);
+      pf.group.add(new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.12, 12, 44), mat(0xec7063)));
+      push(pf);
+      const pe = mitoPart('mito-envelope', 0, 0, 0, 0.5);
+      [-1.6, 1.6].forEach(x => {
+        const e = new THREE.Mesh(new THREE.SphereGeometry(1.05, 28, 20), ghost(0xaf7ac5, 0.3));
+        e.position.set(x, 0, 0);
+        pe.group.add(e);
+      });
+      push(pe);
+      const pc = mitoPart('mito-centrioles', 0, 1.4, 0, 0.8);
+      [[-1.6, 1.0, 0], [1.6, 1.0, 0]].forEach(pt => {
+        const c = centrosome(); c.position.set(...pt); pc.group.add(c);
+      });
+      push(pc);
+      updateMitoHud();
+      return;
+    }
+    {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(R, 48, 32), ghost(0x5dade2, 0.13));
+      m.renderOrder = 10;
+      container.add(noPick(m));
+    }
+
+    // --- centrioles / centrosomes: together, migrating, then at the poles ---
+    const pc = mitoPart('mito-centrioles', 0, 1.6, 0, 0.9);
+    const polePts = s === 0 ? [[0.9, 1.9, 0]]
+      : s === 1 ? [[-1.2, 1.4, 0], [1.2, 1.4, 0]]
+      : [[-POLE, 0, 0], [POLE, 0, 0]];
+    polePts.forEach(pt => { const c = centrosome(); c.position.set(...pt); pc.group.add(c); });
+    push(pc);
+
+    // --- nuclear envelope: present, breaking down, gone, reformed ---
+    if (s === 0 || s === 1 || s === 4) {
+      const pe = mitoPart('mito-envelope', 0, 0, 0, 0.7);
+      if (s === 4) {
+        [-1.55, 1.55].forEach(x => {
+          const e = new THREE.Mesh(new THREE.SphereGeometry(1.0, 28, 20), ghost(0xaf7ac5, 0.32));
+          e.position.set(x, 0, 0);
+          pe.group.add(e);
+        });
+      } else {
+        pe.group.add(new THREE.Mesh(
+          new THREE.SphereGeometry(1.6, 32, 24), ghost(0xaf7ac5, s === 1 ? 0.14 : 0.32)));
+      }
+      push(pe);
+    }
+
+    // --- chromosomes through the stages ---
+    const pch = mitoPart('mito-chromosomes', 0, 0, 0, 1.0);
+    const plateZ = [-0.9, -0.3, 0.3, 0.9];
+    if (s === 0) {
+      container.add(chromatin(0, 0, 0, 0.9, 4));
+    } else if (s === 1) {
+      [[-0.7, 0.5, 0.4], [0.6, -0.4, -0.5], [0.1, 0.8, -0.2], [-0.2, -0.7, 0.6]]
+        .forEach(pt => {
+          const x = xChromo(); x.position.set(...pt); x.rotation.set(pt[0], pt[1], 0);
+          pch.group.add(x);
+        });
+    } else if (s === 2) {
+      plateZ.forEach((z, i) => {
+        const x = xChromo(); x.position.set(0, 0.15 * (i - 1.5), z);
+        pch.group.add(x);
+      });
+      const plate = new THREE.Mesh(new THREE.CircleGeometry(1.5, 40), ghost(0xf2c14e, 0.10));
+      plate.rotation.y = Math.PI / 2;
+      container.add(noPick(plate));
+    } else if (s === 3) {
+      plateZ.forEach((z, i) => {
+        const y = 0.15 * (i - 1.5);
+        [-0.95, 0.95].forEach(x => {
+          const c = chromatid(); c.rotation.z = Math.PI / 2;
+          c.position.set(x, y, z);
+          pch.group.add(c);
+        });
+      });
+    } else if (s === 4) {
+      [-1.55, 1.55].forEach(x => {
+        plateZ.forEach((z, i) => {
+          const c = chromatid(0x7fb3e8);
+          c.position.set(x + (i % 2 ? 0.25 : -0.25), 0.15 * (i - 1.5), z * 0.6);
+          c.rotation.z = Math.PI / 2 + i * 0.2;
+          pch.group.add(c);
+        });
+        container.add(chromatin(x, 0, 0, 0.7, 2));
+      });
+    }
+    if (s >= 1 && s <= 4) push(pch);
+
+    // --- spindle fibers grow from the poles toward the chromosomes ---
+    if (s >= 1 && s <= 4) {
+      const ps = mitoPart('mito-spindle', 0, 0, 0, 0.8);
+      const targets = s === 2 ? plateZ.map((z, i) => [0, 0.15 * (i - 1.5), z])
+        : s === 3 ? plateZ.flatMap((z, i) =>
+          [[-0.95, 0.15 * (i - 1.5), z], [0.95, 0.15 * (i - 1.5), z]])
+        : s === 4 ? [[-1.55, 0, 0], [1.55, 0, 0]]
+        : [[-0.4, 0.2, 0], [0.4, -0.2, 0]];
+      const poles = s === 1 ? [[-1.2, 1.4, 0], [1.2, 1.4, 0]]
+        : [[-POLE, 0, 0], [POLE, 0, 0]];
+      poles.forEach(pole => targets.forEach(t => ps.group.add(fiber(pole, t))));
+      push(ps);
+    }
+    updateMitoHud();
+  }
+
+  /* ------------------------- mitosis HUD overlay ----------------------- */
+  function mel(tag, id, parent, text, cls) {
+    const e = document.createElement(tag);
+    if (id) e.id = id;
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function ensureMitoOverlay() {
+    if (mitoOverlay) return;
+    mitoOverlay = document.createElement('div');
+    mitoOverlay.id = 'mitosis-panel';
+    const head = mel('div', null, mitoOverlay, null, 'ap-head');
+    mel('span', null, head, '\uD83E\uDDEC Mitosis');
+    mitoEls.stage = mel('span', 'mito-stage', head, MITOSIS_STAGES[0].label);
+    mitoEls.blurb = mel('div', 'mito-blurb', mitoOverlay, MITOSIS_STAGES[0].blurb);
+    const ctrls = mel('div', null, mitoOverlay, null, 'ap-controls');
+    mitoEls.prev = mel('button', 'mito-prev', ctrls, '\u23EE Prev');
+    mitoEls.play = mel('button', 'mito-play', ctrls, '\u23F8 Pause');
+    mitoEls.next = mel('button', 'mito-next', ctrls, '\u23ED Next');
+    mitoEls.reset = mel('button', 'mito-reset', ctrls, '\u21BA Reset');
+    const dots = mel('div', 'mito-dots', mitoOverlay);
+    mitoEls.dots = MITOSIS_STAGES.map((st, i) => {
+      const d = mel('button', null, dots, null, i === 0 ? 'on' : '');
+      d.title = st.label;
+      d.setAttribute('aria-label', st.label);
+      d.addEventListener('click', () => setMitosisStage(i));
+      return d;
+    });
+    const setPlayLabel = () => {
+      mitoEls.play.textContent = mito.playing ? '\u23F8 Pause' : '\u25B6 Play';
+    };
+    mitoEls.play.addEventListener('click', () => { mito.playing = !mito.playing; setPlayLabel(); });
+    mitoEls.prev.addEventListener('click', () => setMitosisStage(mito.stage - 1));
+    mitoEls.next.addEventListener('click', () => setMitosisStage(mito.stage + 1));
+    mitoEls.reset.addEventListener('click', () => {
+      mito.playing = true; setPlayLabel(); setMitosisStage(0);
+    });
+    document.body.appendChild(mitoOverlay);
+    setPlayLabel();
+  }
+  function updateMitoHud() {
+    if (!mitoOverlay) return;
+    const st = MITOSIS_STAGES[mito.stage];
+    mitoEls.stage.textContent = st.label;
+    mitoEls.blurb.textContent = st.blurb;
+    mitoEls.dots.forEach((d, i) => { d.className = i === mito.stage ? 'on' : ''; });
+  }
+  function setMitoOverlayVisible(on) {
+    ensureMitoOverlay();
+    mitoOverlay.style.display = on ? 'block' : 'none';
+    updateMitoHud();
+  }
+
+  function setMitosisStage(i) {
+    mito.stage = ((i % MITOSIS_STAGES.length) + MITOSIS_STAGES.length) % MITOSIS_STAGES.length;
+    mito.t = 0;
+    clearContainer();
+    buildMitosisView();
+    updateMitoHud();
+  }
+  function mitoUpdate(dt) {
+    if (view !== 'mitosis') return;
+    if (mito.playing) {
+      mito.t += dt;
+      if (mito.t > 4.0) setMitosisStage(mito.stage + 1);
+    }
+  }
+
+  /* ------------------------------ view wiring -------------------------- */
+  function setView(id) {
+    clearContainer();
+    view = CELL_VIEWS.some(v => v.id === id) ? id : 'cell';
+    if (view === 'mitosis') { setMitosisStage(mito.stage); mito.playing = true; }
+    else buildCellView();
+    setMitoOverlayVisible(view === 'mitosis');
+    if (mitoEls.play) mitoEls.play.textContent = mito.playing ? '\u23F8 Pause' : '\u25B6 Play';
+    return view;
+  }
+  function getViewId() { return view; }
+  function getContextId() { return view; }
+
+  setView('cell');
 
   group.position.y = 0.2;
   return {
     id: 'cell',
     label: 'Animal Cell',
     group,
-    parts,
+    getParts: () => parts,
+    get parts() { return parts; },
     systems: SYSTEMS,
-    getContextId: () => 'main',
-    camera: { pos: [5.4, 3.4, 6.4], target: [0, 0.2, 0] },
-    explodeScale: 1.0
+    viewList: CELL_VIEWS,
+    setView,
+    getViewId,
+    getContextId,
+    get camera() { return CELL_CAMERAS[view]; },
+    explodeScale: 1.0,
+    /* per-frame hook for the mitosis auto-play (main.js calls it when present) */
+    update(dt) { mitoUpdate(dt); },
+    /* teardown for the mitosis HUD overlay when the atlas is unloaded */
+    dispose() {
+      if (mitoOverlay && mitoOverlay.parentNode) mitoOverlay.parentNode.removeChild(mitoOverlay);
+      mitoOverlay = null;
+      for (const k of Object.keys(mitoEls)) delete mitoEls[k];
+    },
+    /* introspection for headless tests / QA */
+    mitoDebug: {
+      stage: () => mito.stage,
+      stageId: () => MITOSIS_STAGES[mito.stage].id,
+      overlayVisible: () => !!(mitoOverlay && mitoOverlay.style.display === 'block')
+    }
   };
 }

@@ -183,6 +183,68 @@ export const AP_CONCEPTS = {
   }
 };
 
+/* Concept Q&A bank for the Animal Cell mitosis view.
+ * Keyed by part id; used for the micro-quiz 'choice' kind. answer must be
+ * one of options. */
+export const MITOSIS_CONCEPTS = {
+  'mito-chromosomes': {
+    stem: 'During which phase do sister chromatids separate?',
+    options: ['Anaphase', 'Prophase', 'Metaphase'],
+    answer: 'Anaphase'
+  },
+  'mito-spindle': {
+    stem: 'Spindle fibers attach to each chromatid at the\u2026',
+    options: ['Kinetochore', 'Telomere', 'Nucleolus'],
+    answer: 'Kinetochore'
+  },
+  'mito-centrioles': {
+    stem: 'In animal cells, what organizes the mitotic spindle?',
+    options: ['The centrosome', 'The nucleolus', 'The Golgi apparatus'],
+    answer: 'The centrosome'
+  },
+  'mito-envelope': {
+    stem: 'What happens to the nuclear envelope in prometaphase?',
+    options: ['It breaks down', 'It doubles in thickness', 'It becomes the spindle'],
+    answer: 'It breaks down'
+  },
+  'mito-furrow': {
+    stem: 'How do plant cells carry out cytokinesis?',
+    options: ['They build a cell plate', 'They form a deeper furrow', 'They skip cytokinesis'],
+    answer: 'They build a cell plate'
+  }
+};
+
+/* Concept Q&A bank for the Biochem Corner Krebs cycle view.
+ * Keyed by part id; used for the micro-quiz 'choice' kind. answer must be
+ * one of options. */
+export const KREBS_CONCEPTS = {
+  'k-citrate': {
+    stem: 'What two molecules combine to form citrate?',
+    options: ['Oxaloacetate + acetyl-CoA', 'Malate + CO\u2082', 'Succinate + FADH\u2082'],
+    answer: 'Oxaloacetate + acetyl-CoA'
+  },
+  'k-alphakg': {
+    stem: 'How many CO\u2082 molecules are released per turn of the Krebs cycle?',
+    options: ['2', '1', '4'],
+    answer: '2'
+  },
+  'k-succinate': {
+    stem: 'Which step produces FADH\u2082?',
+    options: ['Succinate \u2192 fumarate', 'Malate \u2192 oxaloacetate', 'Citrate \u2192 isocitrate'],
+    answer: 'Succinate \u2192 fumarate'
+  },
+  'k-malate': {
+    stem: 'How many NADH are made per acetyl-CoA in the Krebs cycle?',
+    options: ['3', '2', '1'],
+    answer: '3'
+  },
+  'k-oxaloacetate': {
+    stem: 'What is regenerated when the Krebs cycle completes a turn?',
+    options: ['Oxaloacetate', 'Acetyl-CoA', 'Pyruvate'],
+    answer: 'Oxaloacetate'
+  }
+};
+
 function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 /* Turn the part's first description sentence into a fill-in-the-blank stem.
@@ -221,7 +283,7 @@ export function sampleMicroQuestion(part, parts, kindHint) {
     return { kind: 'element', el: part.el, elName: elementName(part), part };
   }
   if (kindHint === 'choice' && parts.length >= 3) {
-    const concept = AP_CONCEPTS[part.id];
+    const concept = AP_CONCEPTS[part.id] || MITOSIS_CONCEPTS[part.id] || KREBS_CONCEPTS[part.id];
     if (concept) {
       return {
         kind: 'choice', part,
