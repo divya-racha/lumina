@@ -240,7 +240,8 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* action potential lab: voltage graph + playback controls (Neuron Lab view) */
-#ap-panel {
+/* mitosis stepper + krebs cycle stepper reuse the same floating-panel look */
+#ap-panel, #mitosis-panel, #krebs-panel {
   display: none;
   position: fixed; z-index: 21; left: 16px; bottom: 16px; width: 304px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
@@ -268,6 +269,21 @@ input[type="range"]::-moz-range-thumb {
 .ap-legend { margin-top: 8px; font-size: 0.75rem; color: var(--muted); display: flex; gap: 12px; }
 .ap-legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
 
+/* mitosis / krebs stepper panels */
+#mito-stage, #krebs-step { color: var(--accent2); font-size: 0.78rem; font-weight: 700; text-align: right; }
+#mito-blurb, #krebs-detail { font-size: 0.8rem; color: var(--muted); margin-top: 6px; line-height: 1.45; }
+#krebs-name { font-weight: 800; font-size: 0.92rem; margin-top: 6px; }
+#krebs-io { font-size: 0.8rem; color: var(--text); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.krebs-totals { margin-top: 8px; font-size: 0.75rem; color: var(--muted); line-height: 1.5;
+  border-top: 1px solid var(--line); padding-top: 8px; }
+.mito-dots { display: flex; gap: 8px; margin-top: 10px; justify-content: center; }
+.mito-dots button {
+  width: 12px; height: 12px; border-radius: 50%; padding: 0; cursor: pointer;
+  border: 1px solid var(--line); background: rgba(255, 255, 255, 0.08);
+  transition: background 0.15s ease;
+}
+.mito-dots button.on { background: var(--accent2); border-color: var(--accent2); }
+
 /* ---------------- responsive ---------------- */
 @media (max-width: 900px) {
   .brand p { display: none; }
@@ -289,7 +305,7 @@ input[type="range"]::-moz-range-thumb {
   #top-actions { gap: 6px; }
   #micro-bar { top: 76px; padding: 10px 14px; }
   #learn-chip { bottom: 120px; right: 12px; }
-  #ap-panel { left: 8px; right: 8px; width: auto; bottom: 64px; padding: 10px 12px; }
+  #ap-panel, #mitosis-panel, #krebs-panel { left: 8px; right: 8px; width: auto; bottom: 64px; padding: 10px 12px; }
 }
 
 /* ---------------- learn mode + MCAT ---------------- */
