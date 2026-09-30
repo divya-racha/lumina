@@ -1,4 +1,4 @@
-/* ScienceAtlas — Human Anatomy atlas.
+/* Lumina — Human Anatomy atlas.
  * Stylized classroom-model figure: semi-transparent body shell with
  * toggleable systems (skeletal, muscular, cardiovascular, nervous,
  * digestive, respiratory, urinary). 25 clickable parts. Explode fans

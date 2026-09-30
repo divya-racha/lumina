@@ -1,4 +1,4 @@
-/* ScienceAtlas — quiz + search + learn-mode logic (pure functions, no DOM).
+/* Lumina — quiz + search + learn-mode logic (pure functions, no DOM).
  * Questions are sampled directly from the atlas part data objects, so the
  * quiz can never drift out of sync with what the atlases contain.
  *

@@ -1,4 +1,4 @@
-/* ScienceAtlas — Plant Cell atlas.
+/* Lumina — Plant Cell atlas.
  * Rectangular plant cell: cellulose wall, plasma membrane, a large central
  * vacuole, chloroplasts with thylakoid stacks, plus the shared organelles.
  * Explode pushes organelles outward from the center; wall and membrane stay.

@@ -1,4 +1,4 @@
-/* ScienceAtlas — Ochem Studio atlas.
+/* Lumina — Ochem Studio atlas.
  * Two views: (1) a ring of 8 clickable functional-group fragments — each a
  * small ball-and-stick group registered with quizGroup/quizGroupLabel (no el);
  * (2) a molecule gallery (ethanol, benzene, aspirin, caffeine) where every

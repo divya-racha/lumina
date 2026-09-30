@@ -1,4 +1,4 @@
-/* ScienceAtlas — Biochem Corner atlas.
+/* Lumina — Biochem Corner atlas.
  * The 20 amino acids, built on demand: a shared backbone (amino group,
  * alpha carbon, carboxyl group) plus the R-group side chain, each a clickable
  * part registered with quizGroup/quizGroupLabel (no el). Side-chain atoms

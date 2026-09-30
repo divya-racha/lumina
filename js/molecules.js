@@ -1,4 +1,4 @@
-/* ScienceAtlas — Molecules atlas.
+/* Lumina — Molecules atlas.
  * Ball-and-stick models with a molecule switcher. Correct VSEPR geometry
  * (bent H2O 104.5°, linear CO2, tetrahedral CH4 109.5°), an NaCl lattice
  * chunk, and a simplified glucose ring. Clicking an atom shows element

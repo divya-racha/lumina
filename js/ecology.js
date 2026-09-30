@@ -1,4 +1,4 @@
-/* ScienceAtlas — Ecology atlas.
+/* Lumina — Ecology atlas.
  * Interactive 3D food web: organism nodes arranged by trophic level, with
  * energy-flow arrows from food to eater and dashed nutrient arrows back to
  * the decomposers. The explode slider spreads the trophic levels apart

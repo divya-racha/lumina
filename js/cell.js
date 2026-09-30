@@ -1,4 +1,4 @@
-/* ScienceAtlas — Animal Cell atlas.
+/* Lumina — Animal Cell atlas.
  * Procedural 3D animal cell: translucent membrane, clickable organelles,
  * explode slider pushes organelles outward from the nucleus.
  * Descriptions grounded in OpenStax Biology 2e, Chapter 4 (Cell Structure).

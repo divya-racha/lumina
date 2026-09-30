@@ -1,4 +1,4 @@
-/* ScienceAtlas — main orchestrator.
+/* Lumina — main orchestrator.
  * Scene setup, atlas switching, explode slider, raycast picking,
  * hover highlight, systems panel, info card, responsive UI.
  */
@@ -98,7 +98,7 @@ const micro = { active: false, q: null, kind: null, cycle: 0, locked: false, tim
 const MICRO_KINDS = ['recall', 'choice', 'element'];
 const PRAISE = ['Nice!', 'Locked in!', 'Exactly right!', 'You got it!', 'Brain power! \u26A1'];
 let mastery = {};
-try { mastery = JSON.parse(localStorage.getItem('scienceatlas-mastery') || '{}'); } catch (e) { mastery = {}; }
+try { mastery = JSON.parse(localStorage.getItem('lumina-mastery') || '{}'); } catch (e) { mastery = {}; }
 let lastSeen = null, chipTimer = null;
 
 function atlasCtx() {
@@ -114,7 +114,7 @@ function contextId() {
 const mkey = part => masteryKey(atlas.id, contextId(), part.id);
 const isLearned = part => !!mastery[mkey(part)];
 function masterySave() {
-  try { localStorage.setItem('scienceatlas-mastery', JSON.stringify(mastery)); } catch (e) {}
+  try { localStorage.setItem('lumina-mastery', JSON.stringify(mastery)); } catch (e) {}
 }
 function markLearned(part) {
   const k = mkey(part);

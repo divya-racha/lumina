@@ -1,4 +1,4 @@
-/* ScienceAtlas — Neuron Lab atlas.
+/* Lumina — Neuron Lab atlas.
  * Two views sharing one container: a stylized neuron lying along the x-axis
  * (with an enlarged synapse close-up at the terminals) and a stylized brain
  * with clickable regions. Descriptions grounded in OpenStax Biology 2e,

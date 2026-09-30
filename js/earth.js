@@ -1,4 +1,4 @@
-/* ScienceAtlas — Earth Explorer atlas.
+/* Lumina — Earth Explorer atlas.
  * Procedural cutaway Earth: concentric layer spheres with a 90-degree wedge
  * removed so the interior stays visible, plus clickable plate-tectonic
  * features (plates, mid-ocean ridge, subduction trench) on the crust.
