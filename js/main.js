@@ -17,6 +17,7 @@ import { sampleQuestions, isCorrectAnswer, findTargetPart, questionPrompt,
          questionTargetLabel, quizTier, buildSearchEntries, searchEntries,
          shuffle, MCAT_SECTIONS, MCAT_ROUND, masteryKey,
          sampleMicroQuestion } from './quiz.js';
+import { PASSAGES, passageById, PASSAGE_DISCLAIMER, FIGURE_MAX_ATTEMPTS } from './passages.js';
 
 /* ------------------------------------------------------------ renderer */
 const canvasWrap = document.getElementById('scene');
@@ -92,6 +93,11 @@ let pulsePart = null, pulseUntil = 0;
 /* quiz mode state */
 const quiz = { active: false, questions: [], total: 0, idx: 0, score: 0, locked: false, timer: null, mcat: null };
 let searchIdx = [];
+
+/* passage simulator state */
+const passage = { active: false, pi: 0, stage: 'read', taskIdx: 0, attempts: 0, mcqIdx: 0, score: 0, locked: false, timer: null };
+const passageBtn = $('passage-btn'), passageMenu = $('passage-menu');
+const passageBanner = $('passage-banner'), passageDock = $('passage-dock'), passageEnd = $('passage-end');
 
 /* learn mode state: micro-quiz + mastery */
 const micro = { active: false, q: null, kind: null, cycle: 0, locked: false, timer: null };
@@ -255,6 +261,9 @@ renderer.domElement.addEventListener('pointerup', e => {
   const moved = Math.hypot(e.clientX - downX, e.clientY - downY);
   if (moved < 7 && performance.now() - downT < 600) {
     const part = pick(e.clientX, e.clientY);
+    if (passage.active && passage.stage === 'figure') {
+      passageFigureAnswer(part); return; // figure tasks own the clicks
+    }
     if (micro.active && micro.q && (micro.q.kind === 'recall' || micro.q.kind === 'element')) {
       microAnswer3d(part); return; // empty-space taps don't count
     }
@@ -397,12 +406,15 @@ function showQuizEnd(score, total, mcatSection = null) {
     mcatSection ? startMcat(mcatSection) : startQuiz());
   $('quiz-exit').addEventListener('click', () => endQuiz(false));
 }
-quizBtn.addEventListener('click', () => quiz.active ? endQuiz(false) : startQuiz());
+quizBtn.addEventListener('click', () => {
+  if (passage.active) return; // passages own the session
+  quiz.active ? endQuiz(false) : startQuiz();
+});
 
 /* ------------------------------------------------------- MCAT prep packs */
 const mcatMenu = $('mcat-menu');
 $('mcat-btn').addEventListener('click', () => {
-  if (quiz.active || micro.active) return;
+  if (quiz.active || micro.active || passage.active) return;
   $('mcat-menu-body').innerHTML =
     `<h2>\u2695\uFE0F MCAT Prep</h2><p class="msub">10 questions across atlases, just like test day.</p>` +
     MCAT_SECTIONS.map(s =>
@@ -465,10 +477,246 @@ function mcatNext() {
   renderQuizBar();
 }
 
+/* ------------------------------------------- MCAT passage simulator */
+passageBtn.addEventListener('click', () => {
+  if (passage.active) { endPassage(false); return; }
+  if (quiz.active || micro.active) return;
+  $('passage-menu-body').innerHTML =
+    `<h2>\uD83D\uDCD6 Passage Simulator</h2>` +
+    `<p class="msub">MCAT-style practice where the 3D model is the figure. Read, manipulate, answer.</p>` +
+    PASSAGES.map(p =>
+      `<button class="ppassage" data-id="${p.id}"><strong>${escapeHtml(p.title)}` +
+      (mastery['passage|' + p.id] ? `<span class="pdone">\u2713 done</span>` : '') +
+      `</strong><span>${escapeHtml(p.tagline)}</span>` +
+      `<em>${escapeHtml(p.atlasLabel)} \u00B7 ${p.figureTasks.length} figure tasks \u00B7 ${p.mcqs.length} questions</em></button>`).join('') +
+    `<div class="pdisclaimer">${escapeHtml(PASSAGE_DISCLAIMER)}</div>` +
+    `<button id="passage-menu-close" class="skip-btn">Close</button>`;
+  passageMenu.querySelectorAll('.ppassage').forEach(b =>
+    b.addEventListener('click', () => startPassage(b.dataset.id)));
+  $('passage-menu-close').addEventListener('click', () => { passageMenu.hidden = true; });
+  passageMenu.hidden = false;
+});
+$('passage-dock-x').addEventListener('click', () => endPassage(false));
+
+function startPassage(id) {
+  const p = passageById(id);
+  if (!p || quiz.active || micro.active) return;
+  passageMenu.hidden = true;
+  endMicro(); hideLearnChip();
+  clearSelection(); hideInfo();
+  controls.autoRotate = false;
+  passage.active = true;
+  passage.pi = PASSAGES.indexOf(p);
+  passage.stage = 'read';
+  passage.taskIdx = 0; passage.attempts = 0;
+  passage.mcqIdx = 0; passage.score = 0; passage.locked = false;
+  // auto-switch to the passage's atlas (and its figure view for neuron/biochem)
+  loadAtlas(p.atlas, true);
+  if (p.view && typeof atlas.setView === 'function') {
+    atlas.setView(p.view);
+    camera.position.set(...atlas.camera.pos);
+    controls.target.set(...atlas.camera.target);
+    controls.update();
+    buildSystemsPanel(); // reflect the view switch
+    refreshParts(true);  // re-tag: view rebuilds create brand-new meshes
+  }
+  document.body.classList.add('passage-mode');
+  passageBtn.classList.add('on');
+  passageBtn.innerHTML = '\u2715 Exit passage';
+  passageBanner.hidden = true;
+  renderPassageDock();
+  passageDock.hidden = false;
+}
+
+function endPassage(showResults) {
+  if (passage.timer) { clearTimeout(passage.timer); passage.timer = null; }
+  const wasActive = passage.active;
+  const p = PASSAGES[passage.pi];
+  const score = passage.score, total = p.mcqs.length;
+  passage.active = false; passage.locked = false; passage.stage = 'read';
+  document.body.classList.remove('passage-mode');
+  passageBanner.hidden = true;
+  passageDock.hidden = true;
+  passageBtn.classList.remove('on');
+  passageBtn.innerHTML = '\uD83D\uDCD6 Passages';
+  if (wasActive) refreshHighlights();
+  if (wasActive) loadAtlas(p.atlas); // restore the atlas to its default view
+  if (showResults) showPassageEnd(score, total, p);
+  else passageEnd.hidden = true;
+}
+
+function showPassageEnd(score, total, p) {
+  const tier = quizTier(score, total); // same tier messaging as quiz mode
+  try { mastery['passage|' + p.id] = 1; masterySave(); } catch (e) {}
+  const next = PASSAGES[(PASSAGES.indexOf(p) + 1) % PASSAGES.length];
+  $('passage-end-body').innerHTML =
+    `<div class="qscore">${score}<span>/${total}</span></div>` +
+    `<h2>${tier.title}</h2><p>${tier.sub}</p>` +
+    `<div class="qbtns">` +
+    `<button id="passage-next">Next passage \u2192</button>` +
+    `<button id="passage-retry">\u21BB Retry</button>` +
+    `<button id="passage-exit">Exit</button></div>`;
+  passageEnd.hidden = false;
+  $('passage-next').addEventListener('click', () => { passageEnd.hidden = true; startPassage(next.id); });
+  $('passage-retry').addEventListener('click', () => { passageEnd.hidden = true; startPassage(p.id); });
+  $('passage-exit').addEventListener('click', () => { passageEnd.hidden = true; });
+}
+
+function renderPassageDock() {
+  const p = PASSAGES[passage.pi];
+  const body = $('passage-dock-body');
+  if (passage.stage === 'read') {
+    body.innerHTML =
+      `<div class="ptag">\uD83D\uDCD6 Passage ${passage.pi + 1} of ${PASSAGES.length} \u00B7 ${escapeHtml(p.atlasLabel)}</div>` +
+      `<h2>${escapeHtml(p.title)}</h2>` +
+      `<div class="psub">${escapeHtml(p.tagline)}</div>` +
+      `<div class="ptext">` + p.text.map(t => `<p>${escapeHtml(t)}</p>`).join('') + `</div>` +
+      `<div class="pdisclaimer">${escapeHtml(PASSAGE_DISCLAIMER)}</div>` +
+      `<button class="pbegin" id="p-begin">Begin figure tasks \u2192</button>`;
+    $('p-begin').addEventListener('click', () => {
+      passage.stage = 'figure';
+      passage.taskIdx = 0; passage.attempts = 0; passage.locked = false;
+      clearSelection(); hideInfo();
+      renderPassageDock();
+      renderPassageBanner();
+      passageBanner.hidden = false;
+    });
+  } else if (passage.stage === 'figure') {
+    body.innerHTML =
+      `<div class="ptag">\uD83C\uDFAF Figure task ${passage.taskIdx + 1} of ${p.figureTasks.length}</div>` +
+      `<h2>${escapeHtml(p.title)}</h2>` +
+      `<details class="ptext"><summary>Re-read the passage</summary>` +
+      p.text.map(t => `<p>${escapeHtml(t)}</p>`).join('') + `</details>` +
+      `<div class="psub">Use the 3D model to answer \u2014 your task is in the banner above.</div>`;
+  } else if (passage.stage === 'mcq') {
+    renderPassageMcq();
+  }
+  passageDock.scrollTop = 0;
+}
+
+function renderPassageBanner(feedback) {
+  const p = PASSAGES[passage.pi];
+  const t = p.figureTasks[passage.taskIdx];
+  const left = FIGURE_MAX_ATTEMPTS - passage.attempts;
+  passageBanner.innerHTML =
+    `<div class="qq">${feedback || '\uD83C\uDFAF ' + escapeHtml(t.prompt)}</div>` +
+    `<div class="qmeta">Figure task ${passage.taskIdx + 1}/${p.figureTasks.length}` +
+    (passage.attempts ? ` \u00B7 <span class="pattempts">${left} ${left === 1 ? 'try' : 'tries'} left</span>` : '') +
+    ` \u00B7 <button id="p-skip" class="skip-btn">Skip task</button></div>`;
+  $('p-skip').addEventListener('click', () => {
+    if (passage.locked) return;
+    passage.locked = true;
+    const target = parts.find(x => x.id === t.targetPartId);
+    if (target) setEmissive(target, 0x2ecc71);
+    renderPassageBanner(`\uD83D\uDCA1 Skipped \u2014 that was the <b>${escapeHtml(t.targetLabel)}</b>.`);
+    passage.timer = setTimeout(() => { passage.locked = false; nextFigureTask(); }, 1800);
+  });
+}
+
+function passageFigureAnswer(part) {
+  if (!passage.active || passage.stage !== 'figure' || passage.locked) return;
+  if (!part) return; // empty-space taps don't count
+  const p = PASSAGES[passage.pi];
+  const t = p.figureTasks[passage.taskIdx];
+  if (part.id === t.targetPartId) {
+    passage.locked = true;
+    setEmissive(part, 0x2ecc71);
+    markLearned(part);
+    confettiBurst();
+    renderPassageBanner(`\u2705 Correct! ${escapeHtml(t.confirm)}`);
+    passage.timer = setTimeout(() => { passage.locked = false; nextFigureTask(); }, 1800);
+  } else {
+    passage.attempts++;
+    setEmissive(part, 0xe74c3c);
+    const target = parts.find(x => x.id === t.targetPartId);
+    if (passage.attempts >= FIGURE_MAX_ATTEMPTS) {
+      passage.locked = true;
+      if (target) setEmissive(target, 0x2ecc71);
+      renderPassageBanner(`\uD83D\uDCA1 Out of tries \u2014 that was the <b>${escapeHtml(t.targetLabel)}</b>.`);
+      passage.timer = setTimeout(() => { passage.locked = false; nextFigureTask(); }, 2400);
+    } else {
+      renderPassageBanner(); // re-render shows the tries-left counter
+      if (passage.timer) clearTimeout(passage.timer);
+      passage.timer = setTimeout(() => { if (!passage.locked) refreshHighlights(); }, 900);
+    }
+  }
+}
+
+function nextFigureTask() {
+  const p = PASSAGES[passage.pi];
+  passage.taskIdx++;
+  passage.attempts = 0;
+  refreshHighlights();
+  if (passage.taskIdx >= p.figureTasks.length) {
+    passage.stage = 'mcq';
+    passage.mcqIdx = 0;
+    passageBanner.hidden = true;
+    renderPassageDock();
+  } else {
+    renderPassageDock();
+    renderPassageBanner();
+  }
+}
+
+/* Figure tasks need their atlas view (AP / Krebs). If the user switches
+ * views mid-task via the systems panel, snap back instead of stranding. */
+function ensurePassageView() {
+  const p = PASSAGES[passage.pi];
+  if (p.view && atlas.getViewId && atlas.getViewId() !== p.view) {
+    atlas.setView(p.view);
+    camera.position.set(...atlas.camera.pos);
+    controls.target.set(...atlas.camera.target);
+    controls.update();
+    buildSystemsPanel();
+    refreshParts(true); // re-tag: view rebuilds create brand-new meshes
+  }
+  renderPassageBanner();
+  passageBanner.hidden = false;
+}
+
+function renderPassageMcq() {
+  const p = PASSAGES[passage.pi];
+  const q = p.mcqs[passage.mcqIdx];
+  const letters = ['A', 'B', 'C', 'D'];
+  $('passage-dock-body').innerHTML =
+    `<div class="ptag">\u2753 Question ${passage.mcqIdx + 1} of ${p.mcqs.length} \u00B7 Score ${passage.score}</div>` +
+    `<div style="font-size:1.02rem;font-weight:700;line-height:1.45;">${escapeHtml(q.stem)}</div>` +
+    `<div class="pchoices">` + q.options.map((o, i) =>
+      `<button class="pchoice" data-i="${i}"><span class="pletter">${letters[i]}</span><span>${escapeHtml(o)}</span></button>`).join('') +
+    `</div><div class="pexplain" id="p-explain" hidden></div>` +
+    `<button class="pbegin" id="p-next" hidden>${passage.mcqIdx + 1 >= p.mcqs.length ? 'See my score \u2192' : 'Next question \u2192'}</button>`;
+  passageDock.querySelectorAll('.pchoice').forEach(b =>
+    b.addEventListener('click', () => passageMcqAnswer(q, +b.dataset.i)));
+  $('p-next').addEventListener('click', () => {
+    passage.mcqIdx++;
+    passage.locked = false;
+    if (passage.mcqIdx >= p.mcqs.length) endPassage(true);
+    else renderPassageMcq();
+  });
+}
+
+function passageMcqAnswer(q, picked) {
+  if (!passage.active || passage.locked) return;
+  passage.locked = true;
+  const ok = picked === q.answer;
+  passageDock.querySelectorAll('.pchoice').forEach(b => {
+    const i = +b.dataset.i;
+    if (i === q.answer) b.classList.add('right');
+    else if (i === picked && !ok) b.classList.add('wrong');
+    b.disabled = true;
+  });
+  if (ok) { passage.score++; confettiBurst(); }
+  const ex = $('p-explain');
+  ex.innerHTML = `<span>${ok ? '\u2705 Correct!' : '\uD83D\uDCA1 Not quite.'}</span>${escapeHtml(q.explanation)}`;
+  ex.hidden = false;
+  $('p-next').hidden = false;
+  passageDock.scrollTop = passageDock.scrollHeight;
+}
+
 /* ------------------------------------------- learn mode: quick-check chip */
 const learnChip = $('learn-chip');
 function armLearnChip(part) {
-  if (quiz.active || micro.active || !part) return;
+  if (quiz.active || micro.active || passage.active || !part) return;
   lastSeen = part;
   clearTimeout(chipTimer);
   learnChip.classList.add('show');
@@ -604,7 +852,9 @@ function confettiBurst() {
 function buildSearchIdx() { searchIdx = buildSearchEntries(parts); }
 
 function renderSearchResults() {
-  if (quiz.active) { searchResults.classList.remove('open'); return; } // no hints mid-quiz
+  if (quiz.active || (passage.active && passage.stage !== 'read')) {
+    searchResults.classList.remove('open'); return; // no hints mid-quiz or mid-task
+  }
   const hits = searchEntries(searchIdx, searchInput.value, 8);
   if (!hits.length) { searchResults.innerHTML = ''; searchResults.classList.remove('open'); return; }
   searchResults.innerHTML = hits.map((h, i) =>
@@ -680,6 +930,7 @@ function buildSystemsPanel() {
       b.className = 'mol-btn' + (atlas.getViewId() === v.id ? ' active' : '');
       b.innerHTML = `<strong>${escapeHtml(v.label)}</strong>`;
       b.addEventListener('click', () => {
+        if (passage.active && passage.stage === 'figure') { ensurePassageView(); return; }
         atlas.setView(v.id);
         refreshParts();
         clearSelection();
