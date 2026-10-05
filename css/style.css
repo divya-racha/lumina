@@ -603,6 +603,8 @@ body.passage-mode #info-card { right: 380px; }
 body.exam-mode #tabs { pointer-events: none; opacity: 0.45; }
 body.exam-mode #panel-left { pointer-events: none; opacity: 0.45; }
 body.exam-mode #top-actions .quiz-btn:not(#practical-btn) { pointer-events: none; opacity: 0.45; }
+/* exams promise "no info cards": force-hide any stale card for the duration */
+body.exam-mode #info-card { display: none !important; }
 
 /* exam HUD — mirrors #quiz-bar, with a countdown timer bar */
 #exam-bar {
