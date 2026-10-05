@@ -46,7 +46,22 @@ Every study card carries a plain-English description plus a "🔑 Exam point" di
 - **Mastery tracking** — parts you answer correctly (micro-quizzes, quiz rounds, MCAT packs) are marked learned: ✓ badges in search results and a "Mastered X/Y" line per atlas, saved in your browser.
 - **🎯 Quiz me** (top bar): 10-question rounds sampled from the current atlas — click the named part in 3D. Green = correct, red = wrong (the right answer flashes green). Score tiers from "Keep exploring 🔍" to "Exam ready 🏆".
 - **⚕️ MCAT Prep**: section packs (Bio/Biochem, Chem/Phys) of 10 questions that auto-switch atlases, views, and molecules — like test day. Packs include questions on the action potential, mitosis stages, and Krebs cycle.
+- **📖 Passage Simulator** (top bar): MCAT-style practice where the 3D model *is* the figure. Read an original practice passage, complete figure tasks that require clicking structures in the 3D scene (up to 3 tries, then the answer is revealed), then answer 4 multiple-choice questions with explanations. See below.
 - **💬 Ask the GradPath tutor**: every study card links to the [GradPath AI tutor](https://gradpath-727nuzefxhbofh3rmobmk3.streamlit.app/) for deeper questions.
+
+## 📖 MCAT Passage Simulator
+
+A flagship practice mode: instead of static figures, the passage's figure is a live 3D atlas you can orbit, zoom, and click.
+
+**How a run works:** pick a passage → read it in the side panel (the atlas auto-switches to the right subject and view) → complete 1–2 figure tasks by clicking the named structure in the 3D scene → answer 4 multiple-choice questions (A–D) with explanations → get a tiered score ("Keep exploring 🔍" to "Exam ready 🏆"). Figure tasks allow 3 attempts with gentle feedback, then highlight the correct part and move on. Correct identifications count toward your per-atlas mastery, and finished passages get a ✓ in the menu.
+
+**The three v1 passages** (all original practice content written for Lumina — not affiliated with AAMC, no real MCAT content):
+
+1. **The Cardiac Cycle** (Human Anatomy) — pressure gradients, one-way valves, systemic vs. pulmonary circulation. Figure tasks: click the aorta (oxygenated blood away from the heart) and the vena cava (deoxygenated blood returning).
+2. **The Action Potential** (Neuron Lab, ⚡ Action potential view) — electrochemical gradients, threshold, depolarization/repolarization. Figure tasks: click the voltage-gated sodium channel and the Na⁺/K⁺ pump.
+3. **Aerobic Respiration** (Biochem Corner, 🔄 Krebs cycle view) — redox, NADH/FADH₂, per-turn energy totals. Figure tasks: click oxaloacetate (the 4-carbon acceptor/regenerator) and succinate (the FADH₂ step).
+
+Models remain stylized classroom visualizations; passages are study aids, not admissions or medical advice.
 
 ## Run it locally
 
@@ -80,8 +95,9 @@ python3 -m http.server 8000
 ```
 index.html          app shell (import map, panels, explode slider, learn-mode UI)
 css/style.css       dark theme, responsive desktop/mobile
-js/main.js          scene, controls, picking, panels, explode, MCAT + learn mode
+js/main.js          scene, controls, picking, panels, explode, MCAT + learn mode + passage simulator
 js/quiz.js          quiz sampling, MCAT sections, micro-quiz + mastery logic (pure)
+js/passages.js      passage simulator content: 3 original passages, figure tasks, MCQs (pure)
 js/anatomy.js       25-part procedural human figure, 7 systems
 js/cell.js          13-organelle animal cell + mitosis walkthrough
 js/plantcell.js     plant cell: wall, vacuole, chloroplasts
