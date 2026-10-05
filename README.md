@@ -47,6 +47,7 @@ Every study card carries a plain-English description plus a "🔑 Exam point" di
 - **🎯 Quiz me** (top bar): 10-question rounds sampled from the current atlas — click the named part in 3D. Green = correct, red = wrong (the right answer flashes green). Score tiers from "Keep exploring 🔍" to "Exam ready 🏆".
 - **⚕️ MCAT Prep**: section packs (Bio/Biochem, Chem/Phys) of 10 questions that auto-switch atlases, views, and molecules — like test day. Packs include questions on the action potential, mitosis stages, and Krebs cycle.
 - **📖 Passage Simulator** (top bar): MCAT-style practice where the 3D model *is* the figure. Read an original practice passage, complete figure tasks that require clicking structures in the 3D scene (up to 3 tries, then the answer is revealed), then answer 4 multiple-choice questions with explanations. See below.
+- **⏱️ Practical** (top bar): a timed lab-practical simulator — 10 stations, 20 seconds each, drawn from the current atlas. Clicking a part *is* your answer (no info cards mid-exam, pure recall). Stations you miss or skip come back first next time, because the order adapts to your mastery. Ends with a pass/fail report, average answer time, and per-station review that flies the camera back to anything you missed.
 - **💬 Ask the GradPath tutor**: every study card links to the [GradPath AI tutor](https://gradpath-727nuzefxhbofh3rmobmk3.streamlit.app/) for deeper questions.
 
 ## 📖 MCAT Passage Simulator
@@ -62,6 +63,16 @@ A flagship practice mode: instead of static figures, the passage's figure is a l
 3. **Aerobic Respiration** (Biochem Corner, 🔄 Krebs cycle view) — redox, NADH/FADH₂, per-turn energy totals. Figure tasks: click oxaloacetate (the 4-carbon acceptor/regenerator) and succinate (the FADH₂ step).
 
 Models remain stylized classroom visualizations; passages are study aids, not admissions or medical advice.
+
+## ⏱️ Practical Exam (label-it recall)
+
+Real lab practicals are timed stations where you identify structures with no labels — this mode trains exactly that, and it is deliberately different from the untimed 🎯 Quiz me rounds.
+
+**How an exam works:** 10 stations from the current atlas (all 9 atlases supported), 20 seconds per station with a visible countdown bar. Click the named structure in 3D — the click *is* your answer, and info cards stay closed until the exam ends. Timeout counts as wrong and auto-advances. Correct answers earn up to 200 points (100 + speed bonus).
+
+**Adaptive:** station order is weakest-first, read from your saved mastery — parts you've never attempted come first, then ones you've missed, then mastered ones. Missing a station marks it missed, so it jumps the queue next exam.
+
+**Exam report:** pass/fail tier, score, average answer time, and total points, plus a per-station review list — tap any row to fly the camera back to that structure with its study card open.
 
 ## Run it locally
 
