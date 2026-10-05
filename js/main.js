@@ -18,6 +18,8 @@ import { sampleQuestions, isCorrectAnswer, findTargetPart, questionPrompt,
          shuffle, MCAT_SECTIONS, MCAT_ROUND, masteryKey,
          sampleMicroQuestion } from './quiz.js';
 import { PASSAGES, passageById, PASSAGE_DISCLAIMER, FIGURE_MAX_ATTEMPTS } from './passages.js';
+import { EXAM_STATIONS, STATION_MS, timeBonus, stationPoints, questionRepPart,
+         isCorrectExamAnswer, orderByWeakness, buildExamReport } from './practical.js';
 
 /* ------------------------------------------------------------ renderer */
 const canvasWrap = document.getElementById('scene');
@@ -98,6 +100,12 @@ let searchIdx = [];
 const passage = { active: false, pi: 0, stage: 'read', taskIdx: 0, attempts: 0, mcqIdx: 0, score: 0, locked: false, timer: null };
 const passageBtn = $('passage-btn'), passageMenu = $('passage-menu');
 const passageBanner = $('passage-banner'), passageDock = $('passage-dock'), passageEnd = $('passage-end');
+
+/* practical exam (label-it) state — separate from quiz, like passage mode */
+const exam = { active: false, questions: [], total: 0, idx: 0, score: 0, points: 0,
+               results: [], locked: false, timer: null, tick: null, stationStart: 0 };
+const examBtn = $('practical-btn'), examBar = $('exam-bar'), examEnd = $('exam-end');
+const hintEl = $('hint'), HINT_HTML = hintEl.innerHTML;
 
 /* learn mode state: micro-quiz + mastery */
 const micro = { active: false, q: null, kind: null, cycle: 0, locked: false, timer: null };
@@ -261,6 +269,7 @@ renderer.domElement.addEventListener('pointerup', e => {
   const moved = Math.hypot(e.clientX - downX, e.clientY - downY);
   if (moved < 7 && performance.now() - downT < 600) {
     const part = pick(e.clientX, e.clientY);
+    if (exam.active) { examAnswer(part); return; } // pure recall: the click IS the answer
     if (passage.active && passage.stage === 'figure') {
       passageFigureAnswer(part); return; // figure tasks own the clicks
     }
@@ -278,7 +287,7 @@ renderer.domElement.addEventListener('pointermove', e => {
   if (part !== hovered) {
     hovered = part;
     renderer.domElement.style.cursor = part ? 'pointer' : 'grab';
-    if (!quiz.locked) refreshHighlights(); // don't clear answer flashes
+    if (!quiz.locked && !exam.locked) refreshHighlights(); // don't clear answer flashes
   }
 });
 
@@ -407,14 +416,14 @@ function showQuizEnd(score, total, mcatSection = null) {
   $('quiz-exit').addEventListener('click', () => endQuiz(false));
 }
 quizBtn.addEventListener('click', () => {
-  if (passage.active) return; // passages own the session
+  if (passage.active || exam.active) return; // passages and exams own the session
   quiz.active ? endQuiz(false) : startQuiz();
 });
 
 /* ------------------------------------------------------- MCAT prep packs */
 const mcatMenu = $('mcat-menu');
 $('mcat-btn').addEventListener('click', () => {
-  if (quiz.active || micro.active || passage.active) return;
+  if (quiz.active || micro.active || passage.active || exam.active) return;
   $('mcat-menu-body').innerHTML =
     `<h2>\u2695\uFE0F MCAT Prep</h2><p class="msub">10 questions across atlases, just like test day.</p>` +
     MCAT_SECTIONS.map(s =>
@@ -479,6 +488,7 @@ function mcatNext() {
 
 /* ------------------------------------------- MCAT passage simulator */
 passageBtn.addEventListener('click', () => {
+  if (exam.active) return; // exams own the session
   if (passage.active) { endPassage(false); return; }
   if (quiz.active || micro.active) return;
   $('passage-menu-body').innerHTML =
@@ -713,10 +723,175 @@ function passageMcqAnswer(q, picked) {
   passageDock.scrollTop = passageDock.scrollHeight;
 }
 
+/* ------------------------------------------- practical exam (label-it) */
+examBtn.addEventListener('click', () => {
+  if (quiz.active || micro.active || passage.active) return;
+  exam.active ? endPractical(false) : startPractical();
+});
+
+function startPractical() {
+  if (!parts.length) return;
+  endPractical(false);
+  endQuiz(false); endMicro(); hideLearnChip(); endPassage(false);
+  clearSelection(); hideInfo();
+  camAnim = null; pulsePart = null;
+  controls.autoRotate = false;
+  // sample wide, then order weakest-first (unseen parts first), keep 10
+  const pool = sampleQuestions(parts, atlasCtx(), Math.max(EXAM_STATIONS, 30));
+  exam.questions = orderByWeakness(pool, mastery, atlas.id, contextId(), parts)
+    .slice(0, EXAM_STATIONS);
+  if (!exam.questions.length) return;
+  exam.total = exam.questions.length;
+  exam.idx = 0; exam.score = 0; exam.points = 0; exam.results = [];
+  exam.active = true; exam.locked = false;
+  document.body.classList.add('exam-mode');
+  examBtn.classList.add('on');
+  examBtn.innerHTML = '\u2715 Exit exam';
+  hintEl.innerHTML = '\u23F1\uFE0F Practical exam \u2014 click the named structure. No info cards, 20 seconds per station.';
+  examBar.hidden = false;
+  nextStation();
+}
+
+function nextStation() {
+  exam.locked = false;
+  exam.stationStart = performance.now();
+  renderExamBar();
+  exam.timer = setTimeout(examTimeout, STATION_MS);
+  exam.tick = setInterval(renderExamTimer, 100);
+}
+
+function clearExamClock() {
+  if (exam.timer) { clearTimeout(exam.timer); exam.timer = null; }
+  if (exam.tick) { clearInterval(exam.tick); exam.tick = null; }
+}
+
+function renderExamBar(feedback) {
+  const q = exam.questions[exam.idx];
+  examBar.innerHTML =
+    `<div class="qq">${feedback || '\u23F1\uFE0F ' + escapeHtml(questionPrompt(q, atlasCtx()))}</div>` +
+    `<div class="qmeta">Station ${exam.idx + 1}/${exam.total} \u00B7 Score ${exam.score} \u00B7 ${exam.points} pts</div>` +
+    `<div class="etimer"><div class="etime-fill" id="etime-fill"></div></div>`;
+  renderExamTimer();
+}
+
+function renderExamTimer() {
+  const fill = $('etime-fill');
+  if (!fill || !exam.active) return;
+  const left = Math.max(0, STATION_MS - (performance.now() - exam.stationStart));
+  fill.style.width = (left / STATION_MS * 100).toFixed(1) + '%';
+  fill.classList.toggle('low', left < 5000);
+}
+
+/* Record the outcome in the shared mastery store so future exams (and the
+ * per-atlas "Mastered" line) reflect it: 1 = answered right, 0 = missed. */
+function recordExamMastery(question, ok) {
+  const rep = questionRepPart(question, parts);
+  if (!rep) return;
+  mastery[masteryKey(atlas.id, contextId(), rep.id)] = ok ? 1 : 0;
+  masterySave(); updateMasteryLine();
+}
+
+function examAnswer(part) {
+  if (!exam.active || exam.locked) return;
+  if (!part) return; // empty-space taps don't count; the clock keeps running
+  exam.locked = true;
+  clearExamClock();
+  const q = exam.questions[exam.idx];
+  const elapsed = performance.now() - exam.stationStart;
+  const ok = isCorrectExamAnswer(q, part);
+  recordExamMastery(q, ok);
+  const pts = stationPoints(ok, elapsed);
+  if (ok) {
+    exam.score++; exam.points += pts;
+    setEmissive(part, 0x2ecc71);
+    confettiBurst();
+  } else {
+    setEmissive(part, 0xe74c3c);
+    const target = questionRepPart(q, parts);
+    if (target && target !== part) setEmissive(target, 0x2ecc71);
+  }
+  exam.results.push({ correct: ok, timedOut: false, elapsedMs: Math.round(elapsed),
+                      q, pickedName: part.info.name, pts });
+  // pure recall: never name the target in feedback — the green highlight is the lesson
+  renderExamBar(ok ? `\u2705 Correct! +${pts} pts`
+                   : `\u274C That was the <b>${escapeHtml(part.info.name)}</b>`);
+  exam.timer = setTimeout(() => {
+    exam.locked = false;
+    exam.idx++;
+    if (exam.idx >= exam.total) endPractical(true);
+    else { refreshHighlights(); nextStation(); }
+  }, 1500);
+}
+
+function examTimeout() {
+  if (!exam.active || exam.locked) return;
+  exam.locked = true;
+  clearExamClock();
+  const q = exam.questions[exam.idx];
+  recordExamMastery(q, false); // timeout counts as wrong
+  const target = questionRepPart(q, parts);
+  if (target) setEmissive(target, 0x2ecc71);
+  exam.results.push({ correct: false, timedOut: true, elapsedMs: STATION_MS,
+                      q, pickedName: null, pts: 0 });
+  renderExamBar('\u23F0 Time! No answer recorded.');
+  exam.timer = setTimeout(() => {
+    exam.locked = false;
+    exam.idx++;
+    if (exam.idx >= exam.total) endPractical(true);
+    else { refreshHighlights(); nextStation(); }
+  }, 1600);
+}
+
+function endPractical(showResults) {
+  clearExamClock();
+  const wasActive = exam.active;
+  const results = exam.results.slice();
+  exam.active = false; exam.locked = false;
+  exam.questions = []; exam.total = 0; exam.idx = 0;
+  exam.score = 0; exam.points = 0; exam.results = [];
+  examBar.hidden = true;
+  document.body.classList.remove('exam-mode');
+  examBtn.classList.remove('on');
+  examBtn.innerHTML = '\u23F1\uFE0F Practical';
+  hintEl.innerHTML = HINT_HTML;
+  if (wasActive) refreshHighlights();
+  if (showResults) showExamEnd(results);
+  else examEnd.hidden = true;
+}
+
+function showExamEnd(results) {
+  const rep = buildExamReport(results);
+  const rows = results.map((r, i) => {
+    const label = questionTargetLabel(r.q);
+    const cls = r.correct ? 'ok' : (r.timedOut ? 'to' : 'miss');
+    const mark = r.correct ? '\u2705' : (r.timedOut ? '\u23F0' : '\u274C');
+    const when = r.timedOut ? 'timeout' : (r.elapsedMs / 1000).toFixed(1) + 's';
+    return `<button class="ereview ${cls}" data-i="${i}">` +
+      `<span>${mark} Station ${i + 1} \u2014 ${escapeHtml(label)}</span><em>${when}</em></button>`;
+  }).join('');
+  $('exam-end-body').innerHTML =
+    `<div class="qscore">${rep.correct}<span>/${rep.total}</span></div>` +
+    `<h2>${rep.tier.title}</h2><p>${rep.tier.sub}</p>` +
+    `<div class="qmeta">Avg answer time ${(rep.avgMs / 1000).toFixed(1)}s \u00B7 ${rep.points}/${rep.maxPoints} pts</div>` +
+    `<div class="ereview-list">${rows}</div>` +
+    `<div class="qbtns"><button id="exam-retry">\u21BB Retake</button>` +
+    `<button id="exam-exit">Exit</button></div>`;
+  examEnd.hidden = false;
+  examEnd.querySelectorAll('.ereview').forEach(b =>
+    b.addEventListener('click', () => {
+      const r = results[+b.dataset.i];
+      const target = questionRepPart(r.q, parts);
+      examEnd.hidden = true;
+      if (target) focusPart(target); // post-exam: camera flies, part pulses, info card opens
+    }));
+  $('exam-retry').addEventListener('click', () => { examEnd.hidden = true; startPractical(); });
+  $('exam-exit').addEventListener('click', () => endPractical(false));
+}
+
 /* ------------------------------------------- learn mode: quick-check chip */
 const learnChip = $('learn-chip');
 function armLearnChip(part) {
-  if (quiz.active || micro.active || passage.active || !part) return;
+  if (quiz.active || micro.active || passage.active || exam.active || !part) return;
   lastSeen = part;
   clearTimeout(chipTimer);
   learnChip.classList.add('show');
@@ -742,7 +917,7 @@ function microLabel(q) {
 function startMicro() {
   const part = lastSeen;
   hideLearnChip();
-  if (!part || quiz.active || micro.active) return;
+  if (!part || quiz.active || micro.active || exam.active) return;
   if (!parts.includes(part)) return; // atlas changed since the visit
   const kind = MICRO_KINDS[micro.cycle % MICRO_KINDS.length];
   micro.cycle++;
@@ -852,8 +1027,8 @@ function confettiBurst() {
 function buildSearchIdx() { searchIdx = buildSearchEntries(parts); }
 
 function renderSearchResults() {
-  if (quiz.active || (passage.active && passage.stage !== 'read')) {
-    searchResults.classList.remove('open'); return; // no hints mid-quiz or mid-task
+  if (quiz.active || exam.active || (passage.active && passage.stage !== 'read')) {
+    searchResults.classList.remove('open'); return; // no hints mid-quiz, mid-exam, or mid-task
   }
   const hits = searchEntries(searchIdx, searchInput.value, 8);
   if (!hits.length) { searchResults.innerHTML = ''; searchResults.classList.remove('open'); return; }
