@@ -597,3 +597,73 @@ body.passage-mode #info-card { right: 380px; }
   #passage-menu-card { padding: 24px 22px; }
   #passage-end-card { padding: 28px 24px; }
 }
+
+/* ---------------- Practical exam (label-it) ---------------- */
+/* atlas tabs, systems panel, and the other mode buttons lock mid-exam */
+body.exam-mode #tabs { pointer-events: none; opacity: 0.45; }
+body.exam-mode #panel-left { pointer-events: none; opacity: 0.45; }
+body.exam-mode #top-actions .quiz-btn:not(#practical-btn) { pointer-events: none; opacity: 0.45; }
+
+/* exam HUD — mirrors #quiz-bar, with a countdown timer bar */
+#exam-bar {
+  position: fixed; z-index: 25; top: 84px; left: 50%; transform: translateX(-50%);
+  background: var(--panel); border: 1px solid rgba(255, 122, 89, 0.5);
+  border-radius: 16px; padding: 12px 22px; text-align: center;
+  backdrop-filter: blur(12px); box-shadow: 0 8px 30px rgba(0,0,0,0.45);
+  max-width: calc(100vw - 32px); min-width: min(420px, calc(100vw - 32px));
+}
+#exam-bar[hidden] { display: none; }
+#exam-bar .qq { font-size: 1.05rem; font-weight: 700; }
+#exam-bar .qq b { color: var(--accent2); }
+#exam-bar .qmeta { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+#exam-bar .etimer {
+  height: 8px; border-radius: 999px; background: rgba(255,255,255,0.08);
+  margin-top: 10px; overflow: hidden;
+}
+#exam-bar .etime-fill {
+  height: 100%; width: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, #2ecc71, #f2c14e);
+  transition: width 0.1s linear;
+}
+#exam-bar .etime-fill.low { background: linear-gradient(90deg, #e74c3c, #e67e22); }
+
+/* exam report — mirrors #quiz-end, with per-station review rows */
+#exam-end {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(4,7,12,0.72); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+#exam-end[hidden] { display: none; }
+#exam-end-card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 20px;
+  padding: 32px 36px; text-align: center; max-width: 460px; width: 100%;
+  max-height: 88vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+#exam-end-card .qscore { font-size: 3.2rem; font-weight: 800; color: var(--accent2); }
+#exam-end-card .qscore span { font-size: 1.4rem; color: var(--muted); font-weight: 400; }
+#exam-end-card h2 { margin: 8px 0 6px; font-size: 1.4rem; }
+#exam-end-card p { color: var(--muted); font-size: 0.92rem; margin-bottom: 8px; }
+#exam-end-card .qmeta { font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; }
+.ereview-list { display: flex; flex-direction: column; gap: 8px; margin: 16px 0 20px; text-align: left; }
+.ereview {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  border: 1px solid var(--line); background: rgba(255,255,255,0.03);
+  border-radius: 12px; padding: 10px 14px; cursor: pointer;
+  color: var(--text); font-size: 0.88rem; transition: all 0.15s ease;
+}
+.ereview:hover { border-color: var(--accent2); }
+.ereview em { font-style: normal; color: var(--muted); font-size: 0.8rem; white-space: nowrap; }
+.ereview.ok { border-left: 3px solid #2ecc71; }
+.ereview.miss { border-left: 3px solid #e74c3c; }
+.ereview.to { border-left: 3px solid #e67e22; }
+#exam-retry { background: var(--accent); border-color: var(--accent); color: #06121f; }
+#exam-retry:hover { filter: brightness(1.1); }
+#exam-exit { background: transparent; color: var(--text); }
+#exam-exit:hover { background: rgba(255,255,255,0.07); }
+
+@media (max-width: 900px) {
+  #exam-bar { top: 76px; padding: 10px 14px; }
+  #exam-bar .qq { font-size: 0.95rem; }
+  #exam-end-card { padding: 28px 24px; }
+}
