@@ -140,6 +140,24 @@ export function masteryKey(atlasId, contextId, partId) {
   return `${atlasId}|${contextId}|${partId}`;
 }
 
+/* Count mastered/total over unique part ids. Pure; main.js renders it.
+ * A part counts as mastered only while its mastery entry is truthy —
+ * exam misses are deliberately recorded as 0 (see practical.js), so a
+ * missed part drops back out of the count until it is answered right again.
+ * Reads and writes must always use the same masteryKey format or the
+ * counter and the store will disagree. */
+export function countMastery(parts, masteryMap, atlasId, contextId) {
+  const seen = new Set();
+  let learned = 0, total = 0;
+  (parts || []).forEach(p => {
+    if (!p || seen.has(p.id)) return;
+    seen.add(p.id);
+    total++;
+    if ((masteryMap || {})[masteryKey(atlasId, contextId, p.id)]) learned++;
+  });
+  return { learned, total };
+}
+
 /* Concept Q&A bank for the Neuron Lab action-potential view.
  * Keyed by part id; used for the micro-quiz 'choice' kind so a phase visit
  * can quiz the concept (not just the name). answer must be one of options. */

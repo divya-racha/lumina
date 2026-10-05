@@ -175,6 +175,10 @@ export const PASSAGES = [
     atlas: 'biochem',
     atlasLabel: 'Biochem Corner',
     view: 'krebs',
+    /* Pulled-back framing so the figure-task banner (top-center) clears the
+     * top Krebs node (oxaloacetate): all 8 nodes stay clickable without
+     * orbiting. Only used by the passage; the walkthrough keeps its view. */
+    camera: { pos: [0, 1.0, 19.0], target: [0, 0.2, 0] },
     text: [
       'When a cell needs energy, it does not burn glucose like a fire \u2014 it strips it for electrons. Aerobic respiration harvests those electrons in stages, and the Krebs cycle is the hub where most of the harvesting happens.',
       'It starts in the mitochondrial matrix. Pyruvate from glycolysis is converted to acetyl-CoA, a two-carbon molecule that enters the cycle by joining oxaloacetate, a four-carbon acceptor, to form citrate (six carbons). What follows is a loop of eight reactions that gradually oxidizes the carbons. Twice per turn, a carbon is released as CO\u2082 \u2014 at the isocitrate \u2192 \u03B1-ketoglutarate step and the \u03B1-ketoglutarate \u2192 succinyl-CoA step.',
@@ -268,6 +272,14 @@ export function validatePassage(p) {
     if (!t.id || !t.prompt || !t.targetPartId || !t.targetLabel || !t.confirm)
       errs.push(`figureTasks[${i}] missing field`);
   });
+  /* Optional per-passage camera override (used to keep figure targets clear
+   * of overlay UI). When present it must be a valid pos/target triple. */
+  if (p.camera !== undefined && p.camera !== null) {
+    const okTriple = a => Array.isArray(a) && a.length === 3 &&
+      a.every(n => typeof n === 'number' && Number.isFinite(n));
+    if (!okTriple(p.camera.pos) || !okTriple(p.camera.target))
+      errs.push('camera must have numeric pos[3] and target[3]');
+  }
   if (!Array.isArray(p.mcqs) || p.mcqs.length !== 4)
     errs.push('need exactly 4 MCQs');
   (p.mcqs || []).forEach((q, i) => {

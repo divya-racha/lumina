@@ -15,8 +15,10 @@ import { buildEarth } from './earth.js';
 import { buildEcology } from './ecology.js';
 import { sampleQuestions, isCorrectAnswer, findTargetPart, questionPrompt,
          questionTargetLabel, quizTier, buildSearchEntries, searchEntries,
-         shuffle, MCAT_SECTIONS, MCAT_ROUND, masteryKey,
+         shuffle, MCAT_SECTIONS, MCAT_ROUND, masteryKey, countMastery,
          sampleMicroQuestion } from './quiz.js';
+import { createCardState, markCardOpen, markCardClosed,
+         infoCardAllowed } from './cardstate.js';
 import { PASSAGES, passageById, PASSAGE_DISCLAIMER, FIGURE_MAX_ATTEMPTS } from './passages.js';
 import { EXAM_STATIONS, STATION_MS, timeBonus, stationPoints, questionRepPart,
          isCorrectExamAnswer, orderByWeakness, buildExamReport } from './practical.js';
@@ -115,6 +117,9 @@ let mastery = {};
 try { mastery = JSON.parse(localStorage.getItem('lumina-mastery') || '{}'); } catch (e) { mastery = {}; }
 let lastSeen = null, chipTimer = null;
 
+/* single source of truth for info-card visibility (see js/cardstate.js) */
+const cardState = createCardState();
+
 function atlasCtx() {
   return { id: atlas.id, molecule: atlas.getMoleculeInfo ? atlas.getMoleculeInfo() : null };
 }
@@ -135,16 +140,11 @@ function markLearned(part) {
   if (!mastery[k]) { mastery[k] = 1; masterySave(); updateMasteryLine(); }
 }
 function updateMasteryLine() {
-  const seen = new Set(); let learned = 0, total = 0;
-  parts.forEach(p => {
-    if (seen.has(p.id)) return;
-    seen.add(p.id); total++;
-    if (isLearned(p)) learned++;
-  });
+  const { learned, total } = countMastery(parts, mastery, atlas.id, contextId());
   $('atlas-meta').innerHTML =
     `${parts.length} clickable parts` +
     (atlas.systems && atlas.systems.length ? ` \u00B7 ${atlas.systems.length} systems` : '') +
-    ` \u00B7 <span class="mastered">Mastered ${learned}/${total} \u2713</span>`;
+    ` \u00B7 <span class="mastered" title="Correct answers earn mastery \u2014 practical-exam misses reset it">Mastered ${learned}/${total} \u2713</span>`;
 }
 
 /* ---------------------------------------------------------- atlas switch */
@@ -185,7 +185,10 @@ function loadAtlas(id, keepQuiz = false) {
     t.classList.toggle('active', t.dataset.atlas === id));
   updateMasteryLine();
   const mi = atlas.getMoleculeInfo ? atlas.getMoleculeInfo() : null;
-  if (mi) showMoleculeInfo(mi, infoSuffix());
+  // Don't auto-open the molecule card when a passage or exam owns the
+  // session — a stale card (e.g. Alanine on the biochem passage) would
+  // otherwise linger into figure tasks and exams.
+  if (mi && !passage.active && !exam.active) showMoleculeInfo(mi, infoSuffix());
   else hideInfo();
 }
 
@@ -297,12 +300,17 @@ function selectPart(part) {
   refreshHighlights();
   showInfo(part.info);
 }
+/* Clear selection AND close the card. hideInfo is in a finally block so a
+ * failing highlight reset can never leave a stuck card behind. */
 function clearSelection(learn = false) {
   const was = selected;
-  if (selected) setEmissive(selected, null);
-  selected = null; hovered = null;
-  refreshHighlights();
-  hideInfo();
+  try {
+    if (selected) setEmissive(selected, null);
+    selected = null; hovered = null;
+    refreshHighlights();
+  } finally {
+    hideInfo();
+  }
   if (learn && was) armLearnChip(was); // visiting a part arms a quick check
 }
 
@@ -317,6 +325,9 @@ function animTitle(name) {
   }).join('');
 }
 function showInfo(info) {
+  // Exams promise "no info cards" — never open one mid-exam. (The post-exam
+  // review opens cards only after the exam has ended.)
+  if (!infoCardAllowed({ examActive: exam.active })) return;
   infoBody.innerHTML =
     `<div class="tag">${escapeHtml(info.tag)}</div>` +
     `<h2 class="anim-title">${animTitle(info.name)}</h2>` +
@@ -325,9 +336,13 @@ function showInfo(info) {
     `<a class="tutor-link" href="https://gradpath-727nuzefxhbofh3rmobmk3.streamlit.app/" target="_blank" rel="noopener">\uD83D\uDCAC Ask the GradPath tutor about this</a>` +
     `<button class="gotit-btn" id="gotit-btn">Got it \u2713</button>`;
   infoCard.classList.add('open');
+  markCardOpen(cardState);
   $('gotit-btn').addEventListener('click', () => clearSelection(true));
 }
-function hideInfo() { infoCard.classList.remove('open'); }
+function hideInfo() {
+  markCardClosed(cardState);
+  infoCard.classList.remove('open');
+}
 $('info-close').addEventListener('click', () => clearSelection(true));
 
 /* ------------------------------------------------------------ quiz mode */
@@ -524,12 +539,18 @@ function startPassage(id) {
   loadAtlas(p.atlas, true);
   if (p.view && typeof atlas.setView === 'function') {
     atlas.setView(p.view);
-    camera.position.set(...atlas.camera.pos);
-    controls.target.set(...atlas.camera.target);
+    // per-passage framing override when the default view would put figure
+    // targets behind overlay UI (e.g. the Krebs banner over oxaloacetate)
+    const cam = p.camera || atlas.camera;
+    camera.position.set(...cam.pos);
+    controls.target.set(...cam.target);
     controls.update();
     buildSystemsPanel(); // reflect the view switch
     refreshParts(true);  // re-tag: view rebuilds create brand-new meshes
   }
+  // loadAtlas auto-opens a molecule card for some atlases — force it closed
+  // so no stale card survives into the passage.
+  clearSelection(); hideInfo();
   document.body.classList.add('passage-mode');
   passageBtn.classList.add('on');
   passageBtn.innerHTML = '\u2715 Exit passage';
@@ -586,6 +607,8 @@ function renderPassageDock() {
     $('p-begin').addEventListener('click', () => {
       passage.stage = 'figure';
       passage.taskIdx = 0; passage.attempts = 0; passage.locked = false;
+      // force-close any open card and clear selection: figure-task clicks
+      // must go to passageFigureAnswer, never to a stale info card
       clearSelection(); hideInfo();
       renderPassageDock();
       renderPassageBanner();
@@ -674,8 +697,9 @@ function ensurePassageView() {
   const p = PASSAGES[passage.pi];
   if (p.view && atlas.getViewId && atlas.getViewId() !== p.view) {
     atlas.setView(p.view);
-    camera.position.set(...atlas.camera.pos);
-    controls.target.set(...atlas.camera.target);
+    const cam = p.camera || atlas.camera;
+    camera.position.set(...cam.pos);
+    controls.target.set(...cam.target);
     controls.update();
     buildSystemsPanel();
     refreshParts(true); // re-tag: view rebuilds create brand-new meshes
@@ -747,7 +771,7 @@ function startPractical() {
   document.body.classList.add('exam-mode');
   examBtn.classList.add('on');
   examBtn.innerHTML = '\u2715 Exit exam';
-  hintEl.innerHTML = '\u23F1\uFE0F Practical exam \u2014 click the named structure. No info cards, 20 seconds per station.';
+  hintEl.innerHTML = '\u23F1\uFE0F Practical exam \u2014 click the named structure. No info cards, 20 seconds per station. Misses reset mastery.';
   examBar.hidden = false;
   nextStation();
 }
@@ -1105,7 +1129,12 @@ function buildSystemsPanel() {
       b.className = 'mol-btn' + (atlas.getViewId() === v.id ? ' active' : '');
       b.innerHTML = `<strong>${escapeHtml(v.label)}</strong>`;
       b.addEventListener('click', () => {
-        if (passage.active && passage.stage === 'figure') { ensurePassageView(); return; }
+        if (exam.active) return; // exams own the session
+        if (passage.active) {
+          // passages own their figure view — never strand figure tasks
+          if (passage.stage === 'figure') ensurePassageView();
+          return;
+        }
         atlas.setView(v.id);
         refreshParts();
         clearSelection();
@@ -1125,6 +1154,7 @@ function buildSystemsPanel() {
       b.className = 'mol-btn switch-btn' + (cur && cur.id === m.id ? ' active' : '');
       b.innerHTML = `<strong>${escapeHtml(m.name)}</strong><span>${escapeHtml(m.formula)}</span>`;
       b.addEventListener('click', () => {
+        if (exam.active || passage.active) return; // modes own the atlas content
         atlas.setMolecule(m.id);
         refreshParts();
         clearSelection();
@@ -1152,6 +1182,7 @@ function buildSystemsPanel() {
       b.className = 'mol-btn biome-btn';
       b.innerHTML = `<strong>${escapeHtml(bi.name)}</strong>`;
       b.addEventListener('click', () => {
+        if (exam.active || passage.active) return; // modes own the atlas content
         atlas.setBiome(bi.id);
         showInfo(atlas.getBiomeInfo());
         systemsEl.querySelectorAll('.biome-btn').forEach(x => x.classList.remove('active'));
